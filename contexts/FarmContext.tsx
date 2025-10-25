@@ -9,6 +9,7 @@ interface FarmContextType {
     selectedFarm: Farm | null;
     selectFarm: (farmId: string) => void;
     isLoading: boolean;
+    refetchFarms: () => void;
 }
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
@@ -72,7 +73,7 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
     };
     
     return (
-        <FarmContext.Provider value={{ farms, userFarms, selectedFarm, selectFarm, isLoading }}>
+        <FarmContext.Provider value={{ farms, userFarms, selectedFarm, selectFarm, isLoading, refetchFarms: fetchAllFarms }}>
             {children}
         </FarmContext.Provider>
     );

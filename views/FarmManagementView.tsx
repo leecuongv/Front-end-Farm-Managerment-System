@@ -11,25 +11,11 @@ const initialFarmState: Omit<Farm, 'id'> = {
 };
 
 const FarmManagementView: React.FC = () => {
-    const { farms, isLoading: isLoadingFarms, userFarms } = useFarm();
-    const [localFarms, setLocalFarms] = useState<Farm[]>([]);
+    const { farms, isLoading: isLoadingFarms, refetchFarms } = useFarm();
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingFarm, setEditingFarm] = useState<Farm | Omit<Farm, 'id'> | null>(null);
     
-    // We use the global farms state but also a local one to manage updates without re-fetching everything
-    useEffect(() => {
-        setLocalFarms(farms);
-    }, [farms]);
-
-    // This is just a helper to refetch all farms globally, maybe not needed if we manage state locally
-    const refetchFarms = () => {
-       // The useFarm hook doesn't expose a refetch method, so we'll manage state locally for now.
-       // In a more complex app, we might use a state management library like React Query.
-       // For now, we'll just reload the page as a simple way to refetch all data.
-       window.location.reload();
-    };
-
     const handleOpenModal = (farm: Farm | null = null) => {
         setEditingFarm(farm || initialFarmState);
         setIsModalOpen(true);
@@ -101,7 +87,7 @@ const FarmManagementView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                            {localFarms.length > 0 ? localFarms.map((farm) => (
+                            {farms.length > 0 ? farms.map((farm) => (
                                 <tr key={farm.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{farm.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{farm.location}</td>
