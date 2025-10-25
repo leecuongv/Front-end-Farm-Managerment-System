@@ -1,0 +1,5 @@
+{
+  "name": "Farm Management System",
+  "description": "A comprehensive Farm Management System to manage livestock, crops, inventory, tasks, and finances across multiple farms. Features a dashboard with analytics, role-based access control, and a modern, responsive interface.",
+  "requestFramePermissions": []
+}
