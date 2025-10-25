@@ -2,8 +2,7 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { Farm, Role } from '../types';
-
-const API_BASE_URL = '/api/v1';
+import { API_BASE_URL } from '../apiConfig';
 
 interface FarmContextType {
     farms: Farm[];
@@ -21,9 +20,11 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
     const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch all farms (for admins)
     const fetchAllFarms = useCallback(async () => {
-        if (!token) return;
+        if (!token) {
+            setFarms([]);
+            return;
+        };
         setIsLoading(true);
         try {
             const response = await fetch(`${API_BASE_URL}/farms`, {
@@ -41,18 +42,31 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
     }, [token]);
 
     useEffect(() => {
-        fetchAllFarms();
-    }, [fetchAllFarms]);
+        // Fetch farms when the user logs in
+        if (user) {
+            fetchAllFarms();
+        } else {
+            // Clear data on logout
+            setFarms([]);
+            setSelectedFarm(null);
+            setIsLoading(false);
+        }
+    }, [user, fetchAllFarms]);
 
     const userFarms = user?.role === Role.ADMIN ? farms : farms.filter(farm => user?.farmIds.includes(farm.id));
     
     useEffect(() => {
-        // Auto-select first farm on load or when user farms change
-        if (userFarms.length > 0 && !selectedFarm) {
-            setSelectedFarm(userFarms[0]);
-        } else if (userFarms.length === 0) {
+        // Auto-select the first farm in the list when the list becomes available.
+        if (userFarms.length > 0) {
+            // Check if the currently selected farm is still valid
+            const isSelectedFarmValid = selectedFarm && userFarms.some(f => f.id === selectedFarm.id);
+            if (!isSelectedFarmValid) {
+                setSelectedFarm(userFarms[0]);
+            }
+        } else {
             setSelectedFarm(null);
         }
+    // FIX: Add `selectedFarm` to dependency array to ensure the effect re-runs when the selected farm changes.
     }, [userFarms, selectedFarm]);
 
     const selectFarm = (farmId: string) => {

@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { User } from '../types';
-
-const API_BASE_URL = '/api/v1'; // Using a proxy path
+import { API_BASE_URL } from '../apiConfig';
 
 interface AuthContextType {
     user: User | null;
@@ -47,11 +46,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const data = await response.json();
+
+        // FIX: The API returns a 'user' object, not 'userDto'.
+        // Also, add checks to ensure data is what we expect.
+        if (!data.user || !data.token) {
+            throw new Error('Invalid API response from login');
+        }
         
         const userData: User = {
-            ...data.userDto,
+            ...data.user,
             // The backend doesn't provide an avatar, so we use a placeholder
-            avatarUrl: `https://picsum.photos/seed/${data.userDto.id}/100`
+            avatarUrl: `https://picsum.photos/seed/${data.user.id}/100`
         };
 
         setToken(data.token);
@@ -65,6 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setToken(null);
         localStorage.removeItem('authToken');
         localStorage.removeItem('authUser');
+        // We should also clear the selected farm to avoid stale data
+        // This is handled by FarmContext reacting to user logout
     }, []);
 
     return (

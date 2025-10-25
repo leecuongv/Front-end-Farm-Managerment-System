@@ -4,8 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
-
-const API_BASE_URL = '/api/v1';
+import { API_BASE_URL } from '../apiConfig';
 
 const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
 const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
