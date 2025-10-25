@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -53,7 +52,7 @@ const LoginView: React.FC = () => {
             <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
                 <div className="text-center">
                     <h1 className="text-3xl font-bold text-primary-600 dark:text-primary-400">FarmSys</h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Welcome back! Please sign in.</p>
+                    <p className="mt-2 text-gray-600 dark:text-gray-400">Chào mừng trở lại! Vui lòng đăng nhập.</p>
                 </div>
 
                 {error && <div className="p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
@@ -68,7 +67,7 @@ const LoginView: React.FC = () => {
                                 autoComplete="email" 
                                 required 
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" 
-                                placeholder="Email address"
+                                placeholder="Địa chỉ email"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
                             />
@@ -81,7 +80,7 @@ const LoginView: React.FC = () => {
                                 autoComplete="current-password" 
                                 required 
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" 
-                                placeholder="Password"
+                                placeholder="Mật khẩu"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                             />
@@ -90,7 +89,7 @@ const LoginView: React.FC = () => {
 
                     <div>
                         <button type="submit" disabled={isLoading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50">
-                            {isLoading ? 'Signing in...' : 'Sign in'}
+                            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                         </button>
                     </div>
                 </form>
@@ -100,14 +99,14 @@ const LoginView: React.FC = () => {
                         <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
+                        <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Hoặc tiếp tục với</span>
                     </div>
                 </div>
 
                 <div>
                     <button onClick={handleGoogleLogin} disabled={isLoading} className="w-full inline-flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
                         <GoogleIcon />
-                        <span className="ml-2">Sign in with Google</span>
+                        <span className="ml-2">Đăng nhập với Google</span>
                     </button>
                 </div>
             </div>

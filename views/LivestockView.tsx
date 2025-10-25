@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Animal } from '../types';
-import { useAuth } from '../contexts/AuthContext';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
-import { API_BASE_URL } from '../apiConfig';
+import apiClient from '../apiClient';
 
 const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
 const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
@@ -26,11 +25,10 @@ const LivestockView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAnimal, setEditingAnimal] = useState<Animal | Omit<Animal, 'id'> | null>(null);
     
-    const { token, user } = useAuth();
     const { selectedFarm } = useFarm();
 
     const fetchAnimals = useCallback(async () => {
-        if (!token || !selectedFarm) {
+        if (!selectedFarm) {
             setAnimals([]);
             setIsLoading(false);
             return;
@@ -38,20 +36,14 @@ const LivestockView: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/animals?farmId=${selectedFarm.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) {
-                throw new Error('Failed to fetch livestock data.');
-            }
-            const data = await response.json();
+            const data = await apiClient<Animal[]>(`/animals?farmId=${selectedFarm.id}`);
             setAnimals(data);
         } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
-    }, [token, selectedFarm]);
+    }, [selectedFarm]);
 
     useEffect(() => {
         fetchAnimals();
@@ -72,10 +64,8 @@ const LivestockView: React.FC = () => {
     };
 
     const handleSaveAnimal = async (animalData: Animal | Omit<Animal, 'id'>) => {
-        if (!token || !user) return;
-        
         const isEditing = 'id' in animalData;
-        const url = isEditing ? `${API_BASE_URL}/animals/${animalData.id}` : `${API_BASE_URL}/animals`;
+        const endpoint = isEditing ? `/animals/${animalData.id}` : `/animals`;
         const method = isEditing ? 'PUT' : 'POST';
 
         // Add dummy values for fields not in form
@@ -89,20 +79,10 @@ const LivestockView: React.FC = () => {
         };
         
         try {
-            const response = await fetch(url, {
+            await apiClient(endpoint, {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'user-id': user.id
-                },
                 body: JSON.stringify(payload),
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Failed to ${isEditing ? 'update' : 'create'} animal.`);
-            }
             handleCloseModal();
             fetchAnimals(); // Refresh data
         } catch (err: any) {
@@ -111,26 +91,15 @@ const LivestockView: React.FC = () => {
     };
     
     const handleDeleteAnimal = async (animalId: string) => {
-        if (!token || !user) return;
-        if (window.confirm('Are you sure you want to delete this animal?')) {
+        if (window.confirm('Bạn có chắc chắn muốn xóa vật nuôi này không?')) {
             try {
-                const response = await fetch(`${API_BASE_URL}/animals/${animalId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'user-id': user.id
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to delete animal.');
-                }
+                await apiClient(`/animals/${animalId}`, { method: 'DELETE' });
                 fetchAnimals(); // Refresh data
             } catch (err: any) {
                 setError(err.message);
             }
         }
     };
-
 
     if (isLoading) {
         return (
@@ -143,7 +112,7 @@ const LivestockView: React.FC = () => {
     if (!selectedFarm) {
          return (
              <div className="p-4 text-center text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                Please select a farm to view livestock.
+                Vui lòng chọn một trang trại để xem vật nuôi.
             </div>
          );
     }
@@ -151,12 +120,12 @@ const LivestockView: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Livestock Management</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Quản lý vật nuôi</h2>
                 <button
                     onClick={() => handleOpenModal()}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 >
-                    Add Animal
+                    Thêm vật nuôi
                 </button>
             </div>
             
@@ -167,12 +136,12 @@ const LivestockView: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tag ID</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Species</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Birth Date</th>
-                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã thẻ</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loài</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loại</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày sinh</th>
+                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -190,7 +159,7 @@ const LivestockView: React.FC = () => {
                                             {animal.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                         <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
                                             <EditIcon className="w-5 h-5" />
@@ -203,7 +172,7 @@ const LivestockView: React.FC = () => {
                             )) : (
                                 <tr>
                                     <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                                        No livestock found for this farm.
+                                        Không tìm thấy vật nuôi nào cho trang trại này.
                                     </td>
                                 </tr>
                             )}
@@ -214,7 +183,7 @@ const LivestockView: React.FC = () => {
 
             {isModalOpen && editingAnimal && (
                 <Modal 
-                    title={ 'id' in editingAnimal ? 'Edit Animal' : 'Add Animal'} 
+                    title={ 'id' in editingAnimal ? 'Sửa thông tin vật nuôi' : 'Thêm vật nuôi mới'} 
                     onClose={handleCloseModal}
                 >
                     <AnimalForm 
@@ -251,33 +220,33 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, onSave, onCancel }) => 
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="tagId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tag ID</label>
+                    <label htmlFor="tagId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mã thẻ</label>
                     <input type="text" name="tagId" id="tagId" value={formData.tagId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
                 </div>
                 <div>
-                    <label htmlFor="species" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Species</label>
+                    <label htmlFor="species" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loài</label>
                     <input type="text" name="species" id="species" value={formData.species} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
                 </div>
                 <div>
-                    <label htmlFor="animalType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Animal Type</label>
+                    <label htmlFor="animalType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại vật nuôi</label>
                     <select name="animalType" id="animalType" value={formData.animalType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
                         {ANIMAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Trạng thái</label>
                     <select name="status" id="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
                         {STATUS_TYPES.map(status => <option key={status} value={status}>{status}</option>)}
                     </select>
                 </div>
                  <div>
-                    <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Birth Date</label>
+                    <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày sinh</label>
                     <input type="date" name="birthDate" id="birthDate" value={formData.birthDate} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
                 </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Save</button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button>
             </div>
         </form>
     );

@@ -1,9 +1,7 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { SunIcon, MoonIcon, LogoutIcon, FarmIcon } from '../constants';
+import { SunIcon, MoonIcon, LogoutIcon, FarmIcon, NAV_LINKS } from '../constants';
 import { ViewType } from '../constants';
 import { useFarm } from '../contexts/FarmContext';
 
@@ -36,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setSidebarOpen }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const pageTitle = currentView.charAt(0).toUpperCase() + currentView.slice(1);
+    const pageTitle = NAV_LINKS.find(link => link.href === currentView)?.name || 'Bảng điều khiển';
 
     return (
         <header className="flex items-center justify-between h-20 px-4 sm:px-6 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
@@ -49,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setSidebarOpen }) => {
                         <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </button>
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200 ml-4 hidden sm:block">{pageTitle.replace(' management', '')}</h1>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200 ml-4 hidden sm:block">{pageTitle}</h1>
             </div>
 
             <div className="flex items-center space-x-3 sm:space-x-5">
@@ -59,7 +57,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setSidebarOpen }) => {
                         <button onClick={() => setFarmMenuOpen(!farmMenuOpen)} className="flex items-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                             <FarmIcon className="w-5 h-5 text-primary-500 mr-2" />
                             <span className="text-sm font-medium hidden md:block">
-                                {isFarmsLoading ? 'Loading...' : (selectedFarm?.name || 'Select Farm')}
+                                {isFarmsLoading ? 'Đang tải...' : (selectedFarm?.name || 'Chọn trang trại')}
                             </span>
                              <svg className="w-4 h-4 ml-1 hidden md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
@@ -94,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setSidebarOpen }) => {
                             </div>
                             <a href="#" onClick={(e) => {e.preventDefault(); logout();}} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <LogoutIcon className="w-5 h-5 mr-2" />
-                                Logout
+                                Đăng xuất
                             </a>
                         </div>
                     )}

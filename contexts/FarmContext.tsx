@@ -1,8 +1,7 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { Farm, Role } from '../types';
-import { API_BASE_URL } from '../apiConfig';
+import apiClient from '../apiClient';
 
 interface FarmContextType {
     farms: Farm[];
@@ -15,23 +14,19 @@ interface FarmContextType {
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
 export const FarmProvider = ({ children }: { children: ReactNode }) => {
-    const { user, token } = useAuth();
+    const { user } = useAuth();
     const [farms, setFarms] = useState<Farm[]>([]);
     const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchAllFarms = useCallback(async () => {
-        if (!token) {
+        if (!user) {
             setFarms([]);
             return;
         };
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/farms`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Failed to fetch farms');
-            const data: Farm[] = await response.json();
+            const data = await apiClient<Farm[]>('/farms');
             setFarms(data);
         } catch (error) {
             console.error(error);
@@ -39,7 +34,7 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [token]);
+    }, [user]);
 
     useEffect(() => {
         // Fetch farms when the user logs in

@@ -86,13 +86,13 @@ export const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export const NAV_LINKS = [
-    { name: 'Dashboard', href: 'dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
-    { name: 'Livestock', href: 'livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Inventory', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Tasks', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Finance', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
-    { name: 'User Management', href: 'users', icon: UsersIcon, roles: [Role.ADMIN] },
-    { name: 'Farm Management', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
+    { name: 'Bảng điều khiển', href: 'dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
+    { name: 'Vật nuôi', href: 'livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Công việc', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Tài chính', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
+    { name: 'Quản lý người dùng', href: 'users', icon: UsersIcon, roles: [Role.ADMIN] },
+    { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
 ];
 
 export type ViewType = 'dashboard' | 'livestock' | 'inventory' | 'tasks' | 'finance' | 'users' | 'farms';
