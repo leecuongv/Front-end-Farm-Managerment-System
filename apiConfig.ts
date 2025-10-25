@@ -10,4 +10,4 @@
  * For a deployed backend, it might look like:
  * 'https://api.your-farm-app.com/api/v1'
  */
-export const API_BASE_URL = 'http://localhost:8080/api/v1';
+export const API_BASE_URL = 'https://farm-mamagerment-system.onrender.com/api/v1';
