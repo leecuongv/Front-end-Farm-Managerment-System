@@ -56,15 +56,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         }
 
-        if (!data.user || !authToken) {
+        if (!data.userDto || !authToken) {
             console.error('API Response missing user or token', { data, headers: response.headers });
             throw new Error('Invalid API response from login: user data or token is missing.');
         }
         
         const userData: User = {
-            ...data.user,
+            ...data.userDto,
             // The backend doesn't provide an avatar, so we use a placeholder
-            avatarUrl: `https://picsum.photos/seed/${data.user.id}/100`
+            avatarUrl: `https://picsum.photos/seed/${data.userDto.id}/100`
         };
 
         setToken(authToken);
