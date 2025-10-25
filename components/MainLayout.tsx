@@ -4,6 +4,7 @@ import DashboardView from '../views/DashboardView';
 import { ViewType } from '../constants';
 import LivestockView from '../views/LivestockView';
 import UserManagementView from '../views/UserManagementView';
+import FarmManagementView from '../views/FarmManagementView';
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
@@ -20,7 +21,6 @@ const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
 const InventoryView = () => <PlaceholderView viewName="Quản lý Kho" />;
 const TasksView = () => <PlaceholderView viewName="Quản lý Công việc" />;
 const FinanceView = () => <PlaceholderView viewName="Quản lý Tài chính" />;
-const FarmManagementView = () => <PlaceholderView viewName="Quản lý Trang trại" />;
 
 const MainLayout: React.FC = () => {
     const [currentView, setCurrentView] = useState<ViewType>('dashboard');
