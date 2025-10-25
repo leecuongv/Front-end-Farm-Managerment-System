@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const data = await response.json();
         
-        // Robust token handling: check body first, then fallback to Authorization header.
         let authToken = data.token;
         if (!authToken) {
             const authHeader = response.headers.get('Authorization');
@@ -56,7 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         }
 
-        // FIX: Changed data.userDto to data.user to match the actual API response.
         if (!data.user || !authToken) {
             console.error('API Response missing user or token', { data, headers: response.headers });
             throw new Error('Invalid API response from login: user data or token is missing.');
@@ -64,7 +62,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         const userData: User = {
             ...data.user,
-            // The backend doesn't provide an avatar, so we use a placeholder
             avatarUrl: `https://picsum.photos/seed/${data.user.id}/100`
         };
 
@@ -79,8 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setToken(null);
         localStorage.removeItem('authToken');
         localStorage.removeItem('authUser');
-        // We should also clear the selected farm to avoid stale data
-        // This is handled by FarmContext reacting to user logout
     }, []);
 
     return (
