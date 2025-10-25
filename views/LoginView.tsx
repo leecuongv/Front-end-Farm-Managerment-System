@@ -39,7 +39,8 @@ const LoginView: React.FC = () => {
         try {
             // In a real app, this would trigger the Google OAuth flow.
             // We'll simulate a successful login with a manager account.
-            await login('manager.dalat@farm.com');
+            // FIX: The login function requires a password. We provide one for the simulation.
+            await login('manager.dalat@farm.com', 'password');
         } catch (err: any) {
             setError(err.message);
         } finally {

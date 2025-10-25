@@ -46,11 +46,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const data = await response.json();
+        
+        // Robust token handling: check body first, then fallback to Authorization header.
+        let authToken = data.token;
+        if (!authToken) {
+            const authHeader = response.headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                authToken = authHeader.substring(7);
+            }
+        }
 
-        // FIX: The API returns a 'user' object, not 'userDto'.
-        // Also, add checks to ensure data is what we expect.
-        if (!data.user || !data.token) {
-            throw new Error('Invalid API response from login');
+        if (!data.user || !authToken) {
+            console.error('API Response missing user or token', { data, headers: response.headers });
+            throw new Error('Invalid API response from login: user data or token is missing.');
         }
         
         const userData: User = {
@@ -59,9 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             avatarUrl: `https://picsum.photos/seed/${data.user.id}/100`
         };
 
-        setToken(data.token);
+        setToken(authToken);
         setUser(userData);
-        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('authToken', authToken);
         localStorage.setItem('authUser', JSON.stringify(userData));
     }, []);
 

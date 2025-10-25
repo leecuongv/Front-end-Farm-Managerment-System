@@ -56,9 +56,9 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
     const userFarms = user?.role === Role.ADMIN ? farms : farms.filter(farm => user?.farmIds.includes(farm.id));
     
     useEffect(() => {
-        // Auto-select the first farm in the list when the list becomes available.
+        // Auto-select the first farm in the list when the list becomes available,
+        // or if the currently selected farm becomes invalid.
         if (userFarms.length > 0) {
-            // Check if the currently selected farm is still valid
             const isSelectedFarmValid = selectedFarm && userFarms.some(f => f.id === selectedFarm.id);
             if (!isSelectedFarmValid) {
                 setSelectedFarm(userFarms[0]);
@@ -66,8 +66,8 @@ export const FarmProvider = ({ children }: { children: ReactNode }) => {
         } else {
             setSelectedFarm(null);
         }
-    // FIX: Add `selectedFarm` to dependency array to ensure the effect re-runs when the selected farm changes.
-    }, [userFarms, selectedFarm]);
+    // This effect should ONLY run when the list of available farms changes.
+    }, [userFarms]);
 
     const selectFarm = (farmId: string) => {
         const farm = farms.find(f => f.id === farmId);
