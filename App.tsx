@@ -1,24 +1,33 @@
 
 import React from 'react';
-// Fix: Removed useTheme as it was unused.
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FarmProvider } from './contexts/FarmContext';
 import MainLayout from './components/MainLayout';
 import LoginView from './views/LoginView';
 
-// Fix: Removed React.FC type to avoid potential issues with children prop typing.
 const AppContent = () => {
-    const { user } = useAuth();
+    const { user, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+                <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div>
+            </div>
+        );
+    }
 
     if (!user) {
         return <LoginView />;
     }
 
-    return <MainLayout />;
+    return (
+        <FarmProvider>
+            <MainLayout />
+        </FarmProvider>
+    );
 };
 
-
-// Fix: Removed React.FC type to avoid potential issues with children prop typing.
 const App = () => {
   return (
     <ThemeProvider>
