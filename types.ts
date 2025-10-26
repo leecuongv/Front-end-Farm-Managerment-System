@@ -123,4 +123,16 @@ export interface FinancialTransaction {
     category: string;
     date: string;
     recordedBy: string;
+    relatedBatchId?: string;
+}
+
+export interface Batch {
+    id: string;
+    farmId: string;
+    batchCode: string;
+    type: 'ANIMAL' | 'CROP' | 'INVENTORY';
+    description: string;
+    source?: string;
+    entryDate: string;
+    relatedItemIds?: string[];
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Animal } from '../types';
+import { Animal, Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
@@ -19,6 +19,7 @@ const initialAnimalState: Omit<Animal, 'id' | 'enclosureId'> = {
 
 const LivestockView: React.FC = () => {
     const [animals, setAnimals] = useState<Animal[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,18 +27,24 @@ const LivestockView: React.FC = () => {
     
     const { selectedFarm } = useFarm();
 
-    const fetchAnimals = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         if (!selectedFarm) {
             setAnimals([]);
+            setBatches([]);
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
         setError(null);
         try {
-            const data = await apiClient<Animal[]>(`/animals?farmId=${selectedFarm.id}`);
-            setAnimals(data);
-        } catch (err: any) {
+            const [animalsData, batchesData] = await Promise.all([
+                apiClient<Animal[]>(`/animals?farmId=${selectedFarm.id}`),
+                apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`)
+            ]);
+            setAnimals(animalsData);
+            setBatches(batchesData);
+        } catch (err: any)
+{
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -45,8 +52,8 @@ const LivestockView: React.FC = () => {
     }, [selectedFarm]);
 
     useEffect(() => {
-        fetchAnimals();
-    }, [fetchAnimals]);
+        fetchData();
+    }, [fetchData]);
 
     const handleOpenModal = (animal: Animal | null = null) => {
         if (animal) {
@@ -73,7 +80,7 @@ const LivestockView: React.FC = () => {
                 body: JSON.stringify(animalData),
             });
             handleCloseModal();
-            fetchAnimals(); // Refresh data
+            fetchData(); // Refresh data
         } catch (err: any) {
             setError(err.message);
         }
@@ -83,7 +90,7 @@ const LivestockView: React.FC = () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa vật nuôi này không?')) {
             try {
                 await apiClient(`/animals/${animalId}`, { method: 'DELETE' });
-                fetchAnimals(); // Refresh data
+                fetchData(); // Refresh data
             } catch (err: any) {
                 setError(err.message);
             }
@@ -127,7 +134,7 @@ const LivestockView: React.FC = () => {
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã thẻ</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loài</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loại</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã Lô</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày sinh</th>
                                 <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
@@ -138,7 +145,7 @@ const LivestockView: React.FC = () => {
                                 <tr key={animal.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{animal.tagId}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{animal.species}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{animal.animalType}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{batches.find(b => b.id === animal.batchId)?.batchCode || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                             animal.status === 'HEALTHY' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
@@ -177,6 +184,7 @@ const LivestockView: React.FC = () => {
                 >
                     <AnimalForm 
                         animal={editingAnimal} 
+                        batches={batches}
                         onSave={handleSaveAnimal} 
                         onCancel={handleCloseModal} 
                     />
@@ -188,11 +196,12 @@ const LivestockView: React.FC = () => {
 
 interface AnimalFormProps {
     animal: Animal | Omit<Animal, 'id' | 'enclosureId'>;
+    batches: Batch[];
     onSave: (animal: Animal | Omit<Animal, 'id' | 'enclosureId'>) => void;
     onCancel: () => void;
 }
 
-const AnimalForm: React.FC<AnimalFormProps> = ({ animal, onSave, onCancel }) => {
+const AnimalForm: React.FC<AnimalFormProps> = ({ animal, batches, onSave, onCancel }) => {
     const [formData, setFormData] = useState(animal);
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -202,8 +211,14 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, onSave, onCancel }) => 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        const dataToSave = { ...formData };
+        if (dataToSave.batchId === '') {
+            delete dataToSave.batchId;
+        }
+        onSave(dataToSave);
     };
+
+    const animalBatches = batches.filter(b => b.type === 'ANIMAL');
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -216,6 +231,17 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, onSave, onCancel }) => 
                     <label htmlFor="species" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loài</label>
                     <input type="text" name="species" id="species" value={formData.species} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
                 </div>
+                 <div>
+                    <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày sinh</label>
+                    <input type="date" name="birthDate" id="birthDate" value={formData.birthDate} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                </div>
+                 <div>
+                    <label htmlFor="batchId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lô</label>
+                    <select name="batchId" id="batchId" value={formData.batchId || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
+                        <option value="">Không có</option>
+                        {animalBatches.map(batch => <option key={batch.id} value={batch.id}>{batch.batchCode}</option>)}
+                    </select>
+                </div>
                 <div>
                     <label htmlFor="animalType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại vật nuôi</label>
                     <select name="animalType" id="animalType" value={formData.animalType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
@@ -227,10 +253,6 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, onSave, onCancel }) => 
                     <select name="status" id="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
                         {STATUS_TYPES.map(status => <option key={status} value={status}>{status}</option>)}
                     </select>
-                </div>
-                 <div>
-                    <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày sinh</label>
-                    <input type="date" name="birthDate" id="birthDate" value={formData.birthDate} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
                 </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4">

@@ -97,6 +97,15 @@ export const FeedPlansIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const BatchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" />
+        <path d="m12 12 4 10 4-10" />
+        <path d="M16 12h4" />
+    </svg>
+);
+
+
 export const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>
@@ -117,6 +126,7 @@ export const NAV_LINKS = [
     { name: 'Chuồng trại', href: 'enclosures', icon: EnclosuresIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kế hoạch ăn', href: 'feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Quản lý Lô', href: 'batches', icon: BatchIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Công việc', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Việc của tôi', href: 'my_tasks', icon: TasksIcon, roles: [Role.STAFF] },
     { name: 'Tài chính', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
@@ -124,4 +134,4 @@ export const NAV_LINKS = [
     { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
 ];
 
-export type ViewType = 'dashboard' | 'livestock' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'tasks' | 'my_tasks' | 'finance' | 'users' | 'farms';
+export type ViewType = 'dashboard' | 'livestock' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'batches' | 'tasks' | 'my_tasks' | 'finance' | 'users' | 'farms';

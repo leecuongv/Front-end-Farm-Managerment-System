@@ -11,6 +11,8 @@ import FeedPlansView from '../views/FeedPlansView';
 import InventoryView from '../views/InventoryView';
 import TasksView from '../views/TasksView';
 import MyTasksView from '../views/MyTasksView';
+import FinanceView from '../views/FinanceView';
+import BatchesView from '../views/BatchesView';
 
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
@@ -24,8 +26,6 @@ const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
         </div>
     </div>
 );
-
-const FinanceView = () => <PlaceholderView viewName="Quản lý Tài chính" />;
 
 const MainLayout: React.FC = () => {
     const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -45,6 +45,8 @@ const MainLayout: React.FC = () => {
                 return <FeedPlansView />;
             case 'inventory':
                 return <InventoryView />;
+            case 'batches':
+                return <BatchesView />;
             case 'tasks':
                 return <TasksView />;
             case 'my_tasks':

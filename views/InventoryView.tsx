@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { InventoryItem, InventoryLog, Enclosure, Animal } from '../types';
+import { InventoryItem, InventoryLog, Enclosure, Animal, Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
@@ -27,6 +27,7 @@ const InventoryView: React.FC = () => {
     const { selectedFarm } = useFarm();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [logs, setLogs] = useState<InventoryLog[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -37,18 +38,21 @@ const InventoryView: React.FC = () => {
         if (!selectedFarm) {
             setItems([]);
             setLogs([]);
+            setBatches([]);
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
         setError(null);
         try {
-            const [itemsData, logsData] = await Promise.all([
+            const [itemsData, logsData, batchesData] = await Promise.all([
                 apiClient<InventoryItem[]>(`/inventory-items?farmId=${selectedFarm.id}`),
-                apiClient<InventoryLog[]>(`/inventory-logs?farmId=${selectedFarm.id}`)
+                apiClient<InventoryLog[]>(`/inventory-logs?farmId=${selectedFarm.id}`),
+                apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`)
             ]);
             setItems(itemsData);
             setLogs(logsData);
+            setBatches(batchesData);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -97,7 +101,17 @@ const InventoryView: React.FC = () => {
     const handleCloseLogModal = () => setIsLogModalOpen(false);
     const handleSaveLog = async (logData: Omit<InventoryLog, 'id' | 'recordedBy'>) => {
         try {
-            await apiClient(`/inventory-logs`, { method: 'POST', body: JSON.stringify(logData) });
+            const dataToSave = { ...logData };
+            if (dataToSave.batchCode === '') {
+                delete dataToSave.batchCode;
+            }
+            // FIX: The type of `usageTarget.type` is 'ENCLOSURE' | 'ANIMAL' and cannot be an empty string.
+            // Use a falsy check to handle the empty string coming from the form state without a type error.
+            if (!dataToSave.usageTarget?.type || !dataToSave.usageTarget?.id) {
+                delete dataToSave.usageTarget;
+            }
+
+            await apiClient(`/inventory-logs`, { method: 'POST', body: JSON.stringify(dataToSave) });
             handleCloseLogModal();
             fetchData();
         } catch (err: any) {
@@ -162,6 +176,7 @@ const InventoryView: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vật phẩm</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã Lô</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loại GD</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Số lượng</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ghi chú</th>
@@ -172,6 +187,7 @@ const InventoryView: React.FC = () => {
                                     <tr key={log.id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(log.date).toLocaleDateString('vi-VN')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{items.find(i => i.id === log.itemId)?.name || log.itemId}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{log.batchCode || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${log.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                 {log.type}
@@ -188,7 +204,7 @@ const InventoryView: React.FC = () => {
             </div>
 
             {isItemModalOpen && editingItem && <Modal title={'id' in editingItem ? 'Sửa vật phẩm' : 'Thêm vật phẩm'} onClose={handleCloseItemModal}><ItemForm item={editingItem} onSave={handleSaveItem} onCancel={handleCloseItemModal} /></Modal>}
-            {isLogModalOpen && <Modal title="Ghi chép Kho" onClose={handleCloseLogModal}><LogForm items={items} farmId={selectedFarm.id} onSave={handleSaveLog} onCancel={handleCloseLogModal} /></Modal>}
+            {isLogModalOpen && <Modal title="Ghi chép Kho" onClose={handleCloseLogModal}><LogForm items={items} batches={batches} farmId={selectedFarm.id} onSave={handleSaveLog} onCancel={handleCloseLogModal} /></Modal>}
         </div>
     );
 };
@@ -223,7 +239,7 @@ const ItemForm: React.FC<{ item: InventoryItem | Omit<InventoryItem, 'id'>, onSa
 };
 
 // LogForm Component
-const LogForm: React.FC<{ items: InventoryItem[], farmId: string, onSave: (data: any) => void, onCancel: () => void }> = ({ items, farmId, onSave, onCancel }) => {
+const LogForm: React.FC<{ items: InventoryItem[], batches: Batch[], farmId: string, onSave: (data: any) => void, onCancel: () => void }> = ({ items, batches, farmId, onSave, onCancel }) => {
     const [formData, setFormData] = useState({ ...initialLogState, farmId });
     const [enclosures, setEnclosures] = useState<Enclosure[]>([]);
     const [animals, setAnimals] = useState<Animal[]>([]);
@@ -261,11 +277,18 @@ const LogForm: React.FC<{ items: InventoryItem[], farmId: string, onSave: (data:
                     <option value="OUT">Xuất</option>
                     <option value="IN">Nhập</option>
                 </select>
-                <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
+                <input type="number" step="any" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
+             </div>
+             <div>
+                <label htmlFor="batchCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lô (Tùy chọn)</label>
+                <select name="batchCode" id="batchCode" value={formData.batchCode || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
+                    <option value="">Không có</option>
+                    {batches.filter(b => b.type === 'INVENTORY').map(b => <option key={b.id} value={b.batchCode}>{b.batchCode}</option>)}
+                </select>
              </div>
              {formData.type === 'OUT' && (
                 <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
-                    <h3 className="text-sm font-medium">Mục tiêu sử dụng</h3>
+                    <h3 className="text-sm font-medium">Mục tiêu sử dụng (Tùy chọn)</h3>
                      <select name="type" value={formData.usageTarget?.type || ''} onChange={handleTargetChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
                         <option value="">Chọn loại mục tiêu</option>
                         <option value="ENCLOSURE">Chuồng trại</option>
