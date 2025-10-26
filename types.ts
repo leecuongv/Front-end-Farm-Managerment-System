@@ -86,6 +86,22 @@ export interface InventoryItem {
     lowStockThreshold: number;
 }
 
+export interface InventoryLog {
+    id: string;
+    farmId: string;
+    itemId: string;
+    batchCode?: string;
+    type: 'IN' | 'OUT';
+    quantity: number;
+    notes?: string;
+    usageTarget?: {
+        type: 'ENCLOSURE' | 'ANIMAL';
+        id: string;
+    };
+    recordedBy: string;
+    date: string;
+}
+
 export interface Task {
     id: string;
     farmId: string;

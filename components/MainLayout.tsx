@@ -8,6 +8,10 @@ import FarmManagementView from '../views/FarmManagementView';
 import CropsView from '../views/CropsView';
 import EnclosuresView from '../views/EnclosuresView';
 import FeedPlansView from '../views/FeedPlansView';
+import InventoryView from '../views/InventoryView';
+import TasksView from '../views/TasksView';
+import MyTasksView from '../views/MyTasksView';
+
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
@@ -21,8 +25,6 @@ const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
     </div>
 );
 
-const InventoryView = () => <PlaceholderView viewName="Quản lý Kho" />;
-const TasksView = () => <PlaceholderView viewName="Quản lý Công việc" />;
 const FinanceView = () => <PlaceholderView viewName="Quản lý Tài chính" />;
 
 const MainLayout: React.FC = () => {
@@ -45,6 +47,8 @@ const MainLayout: React.FC = () => {
                 return <InventoryView />;
             case 'tasks':
                 return <TasksView />;
+            case 'my_tasks':
+                return <MyTasksView />;
             case 'finance':
                 return <FinanceView />;
             case 'users':

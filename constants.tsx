@@ -118,9 +118,10 @@ export const NAV_LINKS = [
     { name: 'Kế hoạch ăn', href: 'feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Công việc', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Việc của tôi', href: 'my_tasks', icon: TasksIcon, roles: [Role.STAFF] },
     { name: 'Tài chính', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
     { name: 'Quản lý người dùng', href: 'users', icon: UsersIcon, roles: [Role.ADMIN] },
     { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
 ];
 
-export type ViewType = 'dashboard' | 'livestock' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'tasks' | 'finance' | 'users' | 'farms';
+export type ViewType = 'dashboard' | 'livestock' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'tasks' | 'my_tasks' | 'finance' | 'users' | 'farms';
