@@ -16,7 +16,7 @@ const Modal: React.FC<ModalProps> = ({ title, children, onClose }) => {
             aria-modal="true"
         >
             <div className="fixed inset-0" onClick={onClose}></div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full z-50 m-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform transition-all w-full m-4 max-w-lg md:max-w-2xl z-50">
                 <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100" id="modal-title">
                         {title}
