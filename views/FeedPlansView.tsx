@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FeedPlan } from '../types';
+import { FeedPlan, FeedPlanStage, FeedDetail } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
 import apiClient from '../apiClient';
 
+const FEED_PLAN_STAGES = Object.values(FeedPlanStage);
+
 const initialFeedPlanState: Omit<FeedPlan, 'id'> = {
     farmId: '',
     name: '',
+    stage: FeedPlanStage.STARTER,
     description: '',
+    feedDetails: [],
 };
 
 const FeedPlansView: React.FC = () => {
@@ -116,6 +120,7 @@ const FeedPlansView: React.FC = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tên kế hoạch</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Giai đoạn</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mô tả</th>
                                 <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
                             </tr>
@@ -124,6 +129,7 @@ const FeedPlansView: React.FC = () => {
                             {feedPlans.length > 0 ? feedPlans.map((plan) => (
                                 <tr key={plan.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{plan.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">{plan.stage}</span></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 max-w-md truncate">{plan.description}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                         <button onClick={() => handleOpenModal(plan)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
@@ -136,7 +142,7 @@ const FeedPlansView: React.FC = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={3} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                                    <td colSpan={4} className="text-center py-10 text-gray-500 dark:text-gray-400">
                                         Không tìm thấy kế hoạch ăn nào cho trang trại này.
                                     </td>
                                 </tr>
@@ -171,9 +177,32 @@ interface FeedPlanFormProps {
 const FeedPlanForm: React.FC<FeedPlanFormProps> = ({ plan, onSave, onCancel }) => {
     const [formData, setFormData] = useState(plan);
     
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFeedDetailChange = (index: number, field: keyof FeedDetail, value: string) => {
+        const updatedDetails = [...formData.feedDetails];
+        const detail = updatedDetails[index];
+        if (field === 'amount') {
+            detail.amount = parseFloat(value) || 0;
+        } else {
+            detail.feedId = value;
+        }
+        setFormData(prev => ({ ...prev, feedDetails: updatedDetails }));
+    };
+
+    const handleAddFeedDetail = () => {
+        setFormData(prev => ({
+            ...prev,
+            feedDetails: [...prev.feedDetails, { feedId: '', amount: 0 }]
+        }));
+    };
+    
+    const handleRemoveFeedDetail = (index: number) => {
+        const updatedDetails = formData.feedDetails.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, feedDetails: updatedDetails }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -182,15 +211,54 @@ const FeedPlanForm: React.FC<FeedPlanFormProps> = ({ plan, onSave, onCancel }) =
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-             <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tên kế hoạch</label>
-                <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tên kế hoạch</label>
+                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                </div>
+                <div>
+                    <label htmlFor="stage" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Giai đoạn</label>
+                    <select name="stage" id="stage" value={formData.stage} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
+                        {FEED_PLAN_STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
+                    </select>
+                </div>
             </div>
             <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mô tả</label>
-                <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows={4} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows={3} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
             </div>
+
+            <div>
+                <h4 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">Chi tiết thức ăn</h4>
+                <div className="space-y-3">
+                    {formData.feedDetails.map((detail, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                            <input
+                                type="text"
+                                placeholder="ID Thức ăn"
+                                value={detail.feedId}
+                                onChange={(e) => handleFeedDetailChange(index, 'feedId', e.target.value)}
+                                className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700"
+                            />
+                             <input
+                                type="number"
+                                placeholder="Số lượng"
+                                value={detail.amount}
+                                onChange={(e) => handleFeedDetailChange(index, 'amount', e.target.value)}
+                                className="block w-1/3 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700"
+                            />
+                            <button type="button" onClick={() => handleRemoveFeedDetail(index)} className="p-2 text-red-500 hover:text-red-700 dark:hover:text-red-400">
+                                <TrashIcon className="w-5 h-5"/>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                 <button type="button" onClick={handleAddFeedDetail} className="mt-2 px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                    + Thêm nguyên liệu
+                </button>
+            </div>
+
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Hủy</button>
                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button>

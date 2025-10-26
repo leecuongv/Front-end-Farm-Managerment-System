@@ -39,43 +39,48 @@ export interface Animal {
     status: 'HEALTHY' | 'SICK' | 'SOLD' | 'DEAD';
     enclosureId: string;
     birthDate: string;
-}
-
-export interface Crop {
-    id: string;
-    farmId: string;
-    name: string;
-    plantingDate: string;
-    expectedHarvestDate: string;
-    actualHarvestDate?: string;
-    status: 'PLANTED' | 'GROWING' | 'HARVESTED' | 'FAILED';
-    area: number; // in square meters
-    notes?: string;
+    batchId?: string;
+    feedPlanId?: string;
 }
 
 export interface CropEvent {
     id: string;
     farmId: string;
-    name: string;
-    eventType: 'PLANTING' | 'FERTILIZING' | 'PEST_CONTROL' | 'HARVESTING' | 'OTHER';
-    eventDate: string;
-    description: string;
-    area: number;
-    relatedCropId: string;
+    plotId: string;
+    seasonId: string;
+    eventType: string;
+    date: string;
+    notes: string;
+    recordedBy: string;
+}
+
+export enum FeedPlanStage {
+    STARTER = 'STARTER',
+    GROWER = 'GROWER',
+    FINISHER = 'FINISHER',
+    LACTATION = 'LACTATION',
+    GESTATION = 'GESTATION',
+}
+
+export interface FeedDetail {
+    feedId: string;
+    amount: number;
 }
 
 export interface FeedPlan {
     id: string;
     farmId: string;
     name: string;
+    stage: FeedPlanStage;
     description: string;
+    feedDetails: FeedDetail[];
 }
 
 export interface InventoryItem {
     id: string;
     farmId: string;
     name: string;
-    category: 'FEED' | 'MEDICINE' | 'FERTILIZER' | 'SEED';
+    category: string;
     quantity: number;
     unit: string;
     lowStockThreshold: number;
@@ -85,9 +90,12 @@ export interface Task {
     id: string;
     farmId: string;
     title: string;
+    description: string;
     assignedTo: string; // User ID
     status: 'TODO' | 'IN_PROGRESS' | 'DONE';
     dueDate: string;
+    createdAt: string;
+    createdBy: string;
 }
 
 export interface FinancialTransaction {
@@ -98,4 +106,5 @@ export interface FinancialTransaction {
     description: string;
     category: string;
     date: string;
+    recordedBy: string;
 }

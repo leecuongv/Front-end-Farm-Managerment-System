@@ -8,13 +8,12 @@ import apiClient from '../apiClient';
 const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
 const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
 
-const initialAnimalState: Omit<Animal, 'id'> = {
+const initialAnimalState: Omit<Animal, 'id' | 'enclosureId'> = {
     farmId: '',
     tagId: '',
     species: '',
     animalType: 'YOUNG',
     status: 'HEALTHY',
-    enclosureId: '', // Should be a dropdown in a real app
     birthDate: new Date().toISOString().split('T')[0],
 };
 
@@ -23,7 +22,7 @@ const LivestockView: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingAnimal, setEditingAnimal] = useState<Animal | Omit<Animal, 'id'> | null>(null);
+    const [editingAnimal, setEditingAnimal] = useState<Animal | Omit<Animal, 'id' | 'enclosureId'> | null>(null);
     
     const { selectedFarm } = useFarm();
 
@@ -63,25 +62,15 @@ const LivestockView: React.FC = () => {
         setEditingAnimal(null);
     };
 
-    const handleSaveAnimal = async (animalData: Animal | Omit<Animal, 'id'>) => {
+    const handleSaveAnimal = async (animalData: Animal | Omit<Animal, 'id' | 'enclosureId'>) => {
         const isEditing = 'id' in animalData;
         const endpoint = isEditing ? `/animals/${animalData.id}` : `/animals`;
         const method = isEditing ? 'PUT' : 'POST';
-
-        // Add dummy values for fields not in form
-        const payload = {
-            ...animalData,
-            enclosureId: animalData.enclosureId || null,
-            feedPlanId: null,
-            healthRecords: [],
-            growthRecords: [],
-            reproductionLogs: [],
-        };
         
         try {
             await apiClient(endpoint, {
                 method,
-                body: JSON.stringify(payload),
+                body: JSON.stringify(animalData),
             });
             handleCloseModal();
             fetchAnimals(); // Refresh data
@@ -198,8 +187,8 @@ const LivestockView: React.FC = () => {
 };
 
 interface AnimalFormProps {
-    animal: Animal | Omit<Animal, 'id'>;
-    onSave: (animal: Animal | Omit<Animal, 'id'>) => void;
+    animal: Animal | Omit<Animal, 'id' | 'enclosureId'>;
+    onSave: (animal: Animal | Omit<Animal, 'id' | 'enclosureId'>) => void;
     onCancel: () => void;
 }
 
