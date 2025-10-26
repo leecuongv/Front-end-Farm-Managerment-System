@@ -72,6 +72,31 @@ export const FarmIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const CropsIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M7 20-4-4c0-4 4-8 8-8s8 4 8 8c0 4-4 8-8 8H7Z"/>
+        <path d="M14 14c0 2 2 4 4 4s4-2 4-4-2-4-4-4-4 2-4 4Z"/>
+    </svg>
+);
+
+export const EnclosuresIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M2 6h20" />
+        <path d="M2 12h20" />
+        <path d="M2 18h20" />
+        <path d="M6 2v20" />
+        <path d="M12 2v20" />
+        <path d="M18 2v20" />
+    </svg>
+);
+
+export const FeedPlansIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+        <path d="m9 12 2 2 4-4"/>
+    </svg>
+);
+
 export const EditIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>
@@ -88,6 +113,9 @@ export const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const NAV_LINKS = [
     { name: 'Bảng điều khiển', href: 'dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
     { name: 'Vật nuôi', href: 'livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Mùa vụ', href: 'crops', icon: CropsIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Chuồng trại', href: 'enclosures', icon: EnclosuresIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Kế hoạch ăn', href: 'feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Công việc', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Tài chính', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
@@ -95,4 +123,4 @@ export const NAV_LINKS = [
     { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
 ];
 
-export type ViewType = 'dashboard' | 'livestock' | 'inventory' | 'tasks' | 'finance' | 'users' | 'farms';
+export type ViewType = 'dashboard' | 'livestock' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'tasks' | 'finance' | 'users' | 'farms';

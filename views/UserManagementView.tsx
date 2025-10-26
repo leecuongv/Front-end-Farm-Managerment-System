@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Role, Farm } from '../types';
 import { useFarm } from '../contexts/FarmContext';
@@ -216,7 +217,9 @@ const UserForm: React.FC<UserFormProps> = ({ user, allFarms, onSave, onCancel })
     };
 
     const handleFarmChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedIds = Array.from(e.target.selectedOptions, option => option.value);
+        // FIX: Rewrite to ensure correct type inference for `option`.
+        // The original `Array.from` with a map function was causing `option` to be typed as `unknown`.
+        const selectedIds = Array.from(e.target.selectedOptions).map(option => option.value);
         setFormData(prev => ({...prev, farmIds: selectedIds }));
     };
 

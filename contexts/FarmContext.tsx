@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, PropsWithChildren } from 'react';
 import { useAuth } from './AuthContext';
 import { Farm, Role } from '../types';
 import apiClient from '../apiClient';
@@ -14,7 +15,8 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-export const FarmProvider = ({ children }: { children: ReactNode }) => {
+// FIX: Use React.PropsWithChildren to correctly type the component with children.
+export const FarmProvider = ({ children }: PropsWithChildren<{}>) => {
     const { user } = useAuth();
     const [farms, setFarms] = useState<Farm[]>([]);
     const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);

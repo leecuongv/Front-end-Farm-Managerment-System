@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, PropsWithChildren } from 'react';
 import { User } from '../types';
 import { API_BASE_URL } from '../apiConfig';
 
@@ -12,7 +13,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+// FIX: Use React.PropsWithChildren to correctly type the component with children.
+export const AuthProvider = ({ children }: PropsWithChildren<{}>) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);

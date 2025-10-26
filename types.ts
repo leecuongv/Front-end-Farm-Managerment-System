@@ -41,6 +41,23 @@ export interface Animal {
     birthDate: string;
 }
 
+export interface Crop {
+    id: string;
+    farmId: string;
+    name: string;
+    plantingDate: string;
+    expectedHarvestDate: string;
+    status: 'PLANTED' | 'GROWING' | 'HARVESTED' | 'FAILED';
+    area: number; // in square meters
+}
+
+export interface FeedPlan {
+    id: string;
+    farmId: string;
+    name: string;
+    description: string;
+}
+
 export interface InventoryItem {
     id: string;
     farmId: string;

@@ -5,6 +5,9 @@ import { ViewType } from '../constants';
 import LivestockView from '../views/LivestockView';
 import UserManagementView from '../views/UserManagementView';
 import FarmManagementView from '../views/FarmManagementView';
+import CropsView from '../views/CropsView';
+import EnclosuresView from '../views/EnclosuresView';
+import FeedPlansView from '../views/FeedPlansView';
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
     <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
@@ -32,6 +35,12 @@ const MainLayout: React.FC = () => {
                 return <DashboardView />;
             case 'livestock':
                 return <LivestockView />;
+            case 'crops':
+                return <CropsView />;
+            case 'enclosures':
+                return <EnclosuresView />;
+            case 'feed_plans':
+                return <FeedPlansView />;
             case 'inventory':
                 return <InventoryView />;
             case 'tasks':

@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, PropsWithChildren } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -10,7 +10,8 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+// FIX: Use React.PropsWithChildren to correctly type the component with children.
+export const ThemeProvider = ({ children }: PropsWithChildren<{}>) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme) {
