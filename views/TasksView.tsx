@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Task, User, Role } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 import Calendar from '../components/Calendar';
 
@@ -21,12 +24,13 @@ const initialTaskState: Omit<Task, 'id' | 'createdAt' | 'createdBy'> = {
 const TasksView: React.FC = () => {
     const { user } = useAuth();
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | Omit<Task, 'id' | 'createdAt' | 'createdBy'> | null>(null);
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
     const fetchData = useCallback(async () => {
@@ -37,20 +41,19 @@ const TasksView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [tasksData, usersData] = await Promise.all([
                 apiClient<Task[]>(`/tasks?farmId=${selectedFarm.id}`),
-                apiClient<User[]>('/users') // Assuming admin/manager can see all users to assign tasks
+                apiClient<User[]>('/users')
             ]);
             setTasks(tasksData);
             setUsers(usersData);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchData();
@@ -68,21 +71,24 @@ const TasksView: React.FC = () => {
         const method = isEditing ? 'PUT' : 'POST';
         try {
             await apiClient(endpoint, { method, body: JSON.stringify(taskData) });
+            addNotification(`Công việc đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteTask = async (taskId: string) => {
-        if (window.confirm('Bạn có chắc muốn xóa công việc này?')) {
-            try {
-                await apiClient(`/tasks/${taskId}`, { method: 'DELETE' });
-                fetchData();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteTask = async () => {
+        if (!taskToDelete) return;
+        try {
+            await apiClient(`/tasks/${taskToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Công việc "${taskToDelete.title}" đã được xóa.`, 'success');
+            fetchData();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setTaskToDelete(null);
         }
     };
 
@@ -105,8 +111,6 @@ const TasksView: React.FC = () => {
                     )}
                 </div>
             </div>
-            
-            {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             {viewMode === 'list' ? (
                 <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
@@ -131,7 +135,7 @@ const TasksView: React.FC = () => {
                                         {canManage && (
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                                 <button onClick={() => handleOpenModal(task)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                                <button onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                                <button onClick={() => setTaskToDelete(task)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                             </td>
                                         )}
                                     </tr>
@@ -148,6 +152,15 @@ const TasksView: React.FC = () => {
                 <Modal title={'id' in editingTask ? 'Sửa công việc' : 'Tạo công việc mới'} onClose={handleCloseModal}>
                     <TaskForm task={editingTask} users={users} onSave={handleSaveTask} onCancel={handleCloseModal} />
                 </Modal>
+            )}
+
+            {taskToDelete && (
+                <ConfirmationModal
+                    title="Xóa Công việc"
+                    message={`Bạn có chắc chắn muốn xóa công việc "${taskToDelete.title}"?`}
+                    onConfirm={handleDeleteTask}
+                    onCancel={() => setTaskToDelete(null)}
+                />
             )}
         </div>
     );

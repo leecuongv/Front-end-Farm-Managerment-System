@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Animal, Batch, AnimalEvent } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon, ActivityIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
@@ -23,13 +26,14 @@ const LivestockView: React.FC = () => {
     const [animals, setAnimals] = useState<Animal[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAnimal, setEditingAnimal] = useState<Animal | Omit<Animal, 'id' | 'enclosureId'> | null>(null);
     const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
     const [selectedAnimalForEvents, setSelectedAnimalForEvents] = useState<Animal | null>(null);
+    const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null);
 
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -39,7 +43,6 @@ const LivestockView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [animalsData, batchesData] = await Promise.all([
                 apiClient<Animal[]>(`/animals?farmId=${selectedFarm.id}`),
@@ -47,13 +50,12 @@ const LivestockView: React.FC = () => {
             ]);
             setAnimals(animalsData);
             setBatches(batchesData);
-        } catch (err: any)
-{
-            setError(err.message);
+        } catch (err: any) {
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchData();
@@ -93,21 +95,25 @@ const LivestockView: React.FC = () => {
                 method,
                 body: JSON.stringify(animalData),
             });
+            addNotification(`Vật nuôi đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchData(); // Refresh data
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteAnimal = async (animalId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa vật nuôi này không?')) {
-            try {
-                await apiClient(`/animals/${animalId}`, { method: 'DELETE' });
-                fetchData(); // Refresh data
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteAnimal = async () => {
+        if (!animalToDelete) return;
+
+        try {
+            await apiClient(`/animals/${animalToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Vật nuôi ${animalToDelete.tagId} đã được xóa.`, 'success');
+            fetchData(); // Refresh data
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setAnimalToDelete(null);
         }
     };
 
@@ -138,8 +144,6 @@ const LivestockView: React.FC = () => {
                     Thêm vật nuôi
                 </button>
             </div>
-            
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
@@ -177,7 +181,7 @@ const LivestockView: React.FC = () => {
                                         <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200" title="Sửa">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteAnimal(animal.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200" title="Xóa">
+                                        <button onClick={() => setAnimalToDelete(animal)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200" title="Xóa">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -215,6 +219,15 @@ const LivestockView: React.FC = () => {
                 >
                     <AnimalEvents animal={selectedAnimalForEvents} />
                 </Modal>
+            )}
+
+            {animalToDelete && (
+                <ConfirmationModal
+                    title="Xóa Vật nuôi"
+                    message={`Bạn có chắc chắn muốn xóa vật nuôi có mã thẻ ${animalToDelete.tagId}? Hành động này không thể hoàn tác.`}
+                    onConfirm={handleDeleteAnimal}
+                    onCancel={() => setAnimalToDelete(null)}
+                />
             )}
         </div>
     );
@@ -292,8 +305,8 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, batches, onSave, onCanc
 const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
     const [events, setEvents] = useState<AnimalEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
     const [newEvent, setNewEvent] = useState({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
+    const { addNotification } = useNotification();
 
     const fetchEvents = useCallback(async () => {
         setIsLoading(true);
@@ -301,11 +314,11 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
             const data = await apiClient<AnimalEvent[]>(`/animal-events?animalId=${animal.id}`);
             setEvents(data);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [animal.id]);
+    }, [animal.id, addNotification]);
 
     useEffect(() => {
         fetchEvents();
@@ -322,10 +335,11 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
                 method: 'POST',
                 body: JSON.stringify({ ...newEvent, animalId: animal.id }),
             });
+            addNotification('Sự kiện đã được thêm thành công.', 'success');
             setNewEvent({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
             fetchEvents(); // Refresh list
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
@@ -346,7 +360,6 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
             </div>
             <div>
                 <h4 className="font-semibold mb-2">Thêm sự kiện mới</h4>
-                {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <select name="type" value={newEvent.type} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">

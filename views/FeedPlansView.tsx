@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { FeedPlan, FeedPlanStage, FeedDetail } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const FEED_PLAN_STAGES = Object.values(FeedPlanStage);
@@ -18,11 +21,12 @@ const initialFeedPlanState: Omit<FeedPlan, 'id'> = {
 const FeedPlansView: React.FC = () => {
     const [feedPlans, setFeedPlans] = useState<FeedPlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingFeedPlan, setEditingFeedPlan] = useState<FeedPlan | Omit<FeedPlan, 'id'> | null>(null);
-    
+    const [planToDelete, setPlanToDelete] = useState<FeedPlan | null>(null);
+
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchFeedPlans = useCallback(async () => {
         if (!selectedFarm) {
@@ -31,16 +35,15 @@ const FeedPlansView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const data = await apiClient<FeedPlan[]>(`/feed-plans?farmId=${selectedFarm.id}`);
             setFeedPlans(data);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchFeedPlans();
@@ -66,21 +69,25 @@ const FeedPlansView: React.FC = () => {
                 method,
                 body: JSON.stringify(planData),
             });
+            addNotification(`Kế hoạch ăn đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchFeedPlans();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteFeedPlan = async (planId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa kế hoạch ăn này không?')) {
-            try {
-                await apiClient(`/feed-plans/${planId}`, { method: 'DELETE' });
-                fetchFeedPlans();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteFeedPlan = async () => {
+        if (!planToDelete) return;
+
+        try {
+            await apiClient(`/feed-plans/${planToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Kế hoạch ăn ${planToDelete.name} đã được xóa.`, 'success');
+            fetchFeedPlans();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setPlanToDelete(null);
         }
     };
 
@@ -112,8 +119,6 @@ const FeedPlansView: React.FC = () => {
                 </button>
             </div>
             
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -135,7 +140,7 @@ const FeedPlansView: React.FC = () => {
                                         <button onClick={() => handleOpenModal(plan)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteFeedPlan(plan.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
+                                        <button onClick={() => setPlanToDelete(plan)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -163,6 +168,15 @@ const FeedPlansView: React.FC = () => {
                         onCancel={handleCloseModal} 
                     />
                 </Modal>
+            )}
+
+            {planToDelete && (
+                <ConfirmationModal
+                    title="Xóa Kế hoạch ăn"
+                    message={`Bạn có chắc chắn muốn xóa kế hoạch ${planToDelete.name}?`}
+                    onConfirm={handleDeleteFeedPlan}
+                    onCancel={() => setPlanToDelete(null)}
+                />
             )}
         </div>
     );

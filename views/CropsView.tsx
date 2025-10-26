@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { CropEvent, Plot, Season } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialCropEventState: Omit<CropEvent, 'id' | 'recordedBy'> = {
@@ -19,11 +22,12 @@ const CropsView: React.FC = () => {
     const [plots, setPlots] = useState<Plot[]>([]);
     const [seasons, setSeasons] = useState<Season[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCropEvent, setEditingCropEvent] = useState<CropEvent | Omit<CropEvent, 'id' | 'recordedBy'> | null>(null);
-    
+    const [eventToDelete, setEventToDelete] = useState<CropEvent | null>(null);
+
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -34,7 +38,6 @@ const CropsView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [eventsData, plotsData, seasonsData] = await Promise.all([
                 apiClient<CropEvent[]>(`/crop-events?farmId=${selectedFarm.id}`),
@@ -45,11 +48,11 @@ const CropsView: React.FC = () => {
             setPlots(plotsData);
             setSeasons(seasonsData);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchData();
@@ -85,21 +88,24 @@ const CropsView: React.FC = () => {
                 method,
                 body: JSON.stringify(eventData),
             });
+            addNotification(`Sự kiện mùa vụ đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteCropEvent = async (eventId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa sự kiện mùa vụ này không?')) {
-            try {
-                await apiClient(`/crop-events/${eventId}`, { method: 'DELETE' });
-                fetchData();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteCropEvent = async () => {
+        if (!eventToDelete) return;
+        try {
+            await apiClient(`/crop-events/${eventToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Sự kiện đã được xóa.`, 'success');
+            fetchData();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setEventToDelete(null);
         }
     };
 
@@ -133,8 +139,6 @@ const CropsView: React.FC = () => {
                     Thêm sự kiện
                 </button>
             </div>
-            
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
@@ -161,7 +165,7 @@ const CropsView: React.FC = () => {
                                         <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteCropEvent(event.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
+                                        <button onClick={() => setEventToDelete(event)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -191,6 +195,15 @@ const CropsView: React.FC = () => {
                         onCancel={handleCloseModal} 
                     />
                 </Modal>
+            )}
+            
+            {eventToDelete && (
+                <ConfirmationModal
+                    title="Xóa Sự kiện"
+                    message={`Bạn có chắc chắn muốn xóa sự kiện ${eventToDelete.eventType} vào ngày ${new Date(eventToDelete.date).toLocaleDateString('vi-VN')}?`}
+                    onConfirm={handleDeleteCropEvent}
+                    onCancel={() => setEventToDelete(null)}
+                />
             )}
         </div>
     );

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -39,7 +40,7 @@ const LoginView: React.FC = () => {
             // In a real app, this would trigger the Google OAuth flow.
             // We'll simulate a successful login with a manager account.
             // FIX: The login function requires a password. We provide one for the simulation.
-            await login('manager.dalat@farm.com', 'password');
+            await login('manager.dalat@farm.com', 'manager');
         } catch (err: any) {
             setError(err.message);
         } finally {

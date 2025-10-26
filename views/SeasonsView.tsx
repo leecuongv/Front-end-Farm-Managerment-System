@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Season, Plot } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialSeasonState: Omit<Season, 'id'> = {
@@ -19,11 +22,12 @@ const SeasonsView: React.FC = () => {
     const [seasons, setSeasons] = useState<Season[]>([]);
     const [plots, setPlots] = useState<Plot[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSeason, setEditingSeason] = useState<Season | Omit<Season, 'id'> | null>(null);
-    
+    const [seasonToDelete, setSeasonToDelete] = useState<Season | null>(null);
+
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -33,7 +37,6 @@ const SeasonsView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [seasonsData, plotsData] = await Promise.all([
                 apiClient<Season[]>(`/seasons?farmId=${selectedFarm.id}`),
@@ -42,11 +45,11 @@ const SeasonsView: React.FC = () => {
             setSeasons(seasonsData);
             setPlots(plotsData);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchData();
@@ -65,21 +68,25 @@ const SeasonsView: React.FC = () => {
         
         try {
             await apiClient(endpoint, { method, body: JSON.stringify(seasonData) });
+            addNotification(`Mùa vụ đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteSeason = async (seasonId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa mùa vụ này không?')) {
-            try {
-                await apiClient(`/seasons/${seasonId}`, { method: 'DELETE' });
-                fetchData();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteSeason = async () => {
+        if (!seasonToDelete) return;
+
+        try {
+            await apiClient(`/seasons/${seasonToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Mùa vụ ${seasonToDelete.name} đã được xóa.`, 'success');
+            fetchData();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setSeasonToDelete(null);
         }
     };
 
@@ -95,8 +102,6 @@ const SeasonsView: React.FC = () => {
                 <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm Mùa vụ</button>
             </div>
             
-            {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -118,7 +123,7 @@ const SeasonsView: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getPlotNames(s.plotIds)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-4">
                                         <button onClick={() => handleOpenModal(s)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                        <button onClick={() => handleDeleteSeason(s.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => setSeasonToDelete(s)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -128,6 +133,7 @@ const SeasonsView: React.FC = () => {
             </div>
 
             {isModalOpen && editingSeason && <Modal title={'id' in editingSeason ? 'Sửa Mùa vụ' : 'Thêm Mùa vụ'} onClose={handleCloseModal}><SeasonForm season={editingSeason} plots={plots} onSave={handleSaveSeason} onCancel={handleCloseModal} /></Modal>}
+            {seasonToDelete && <ConfirmationModal title="Xóa Mùa vụ" message={`Bạn có chắc chắn muốn xóa mùa vụ ${seasonToDelete.name}?`} onConfirm={handleDeleteSeason} onCancel={() => setSeasonToDelete(null)} />}
         </div>
     );
 };

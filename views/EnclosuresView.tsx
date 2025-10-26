@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Enclosure } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const ENCLOSURE_TYPES = ['BREEDING_PEN', 'DEVELOPMENT_PEN', 'FATTENING_PEN', 'YOUNG_PEN'];
@@ -17,11 +20,12 @@ const initialEnclosureState: Omit<Enclosure, 'id' | 'currentOccupancy'> = {
 const EnclosuresView: React.FC = () => {
     const [enclosures, setEnclosures] = useState<Enclosure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEnclosure, setEditingEnclosure] = useState<Enclosure | Omit<Enclosure, 'id' | 'currentOccupancy'> | null>(null);
-    
+    const [enclosureToDelete, setEnclosureToDelete] = useState<Enclosure | null>(null);
+
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchEnclosures = useCallback(async () => {
         if (!selectedFarm) {
@@ -30,16 +34,15 @@ const EnclosuresView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const data = await apiClient<Enclosure[]>(`/enclosures?farmId=${selectedFarm.id}`);
             setEnclosures(data);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchEnclosures();
@@ -65,21 +68,24 @@ const EnclosuresView: React.FC = () => {
                 method,
                 body: JSON.stringify(enclosureData),
             });
+            addNotification(`Chuồng trại đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchEnclosures();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteEnclosure = async (enclosureId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa chuồng trại này không?')) {
-            try {
-                await apiClient(`/enclosures/${enclosureId}`, { method: 'DELETE' });
-                fetchEnclosures();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteEnclosure = async () => {
+        if (!enclosureToDelete) return;
+        try {
+            await apiClient(`/enclosures/${enclosureToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Chuồng trại ${enclosureToDelete.name} đã được xóa.`, 'success');
+            fetchEnclosures();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setEnclosureToDelete(null);
         }
     };
 
@@ -111,8 +117,6 @@ const EnclosuresView: React.FC = () => {
                 </button>
             </div>
             
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -134,7 +138,7 @@ const EnclosuresView: React.FC = () => {
                                         <button onClick={() => handleOpenModal(enclosure)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteEnclosure(enclosure.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
+                                        <button onClick={() => setEnclosureToDelete(enclosure)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -162,6 +166,15 @@ const EnclosuresView: React.FC = () => {
                         onCancel={handleCloseModal} 
                     />
                 </Modal>
+            )}
+
+            {enclosureToDelete && (
+                <ConfirmationModal
+                    title="Xóa Chuồng trại"
+                    message={`Bạn có chắc chắn muốn xóa chuồng trại ${enclosureToDelete.name}?`}
+                    onConfirm={handleDeleteEnclosure}
+                    onCancel={() => setEnclosureToDelete(null)}
+                />
             )}
         </div>
     );

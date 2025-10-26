@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const BATCH_TYPES = ['ANIMAL', 'CROP', 'INVENTORY'];
@@ -18,11 +21,12 @@ const initialBatchState: Omit<Batch, 'id'> = {
 const BatchesView: React.FC = () => {
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBatch, setEditingBatch] = useState<Batch | Omit<Batch, 'id'> | null>(null);
+    const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
     
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchBatches = useCallback(async () => {
         if (!selectedFarm) {
@@ -31,16 +35,15 @@ const BatchesView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const data = await apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`);
             setBatches(data);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchBatches();
@@ -66,21 +69,24 @@ const BatchesView: React.FC = () => {
                 method,
                 body: JSON.stringify(batchData),
             });
+            addNotification(`Lô đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchBatches();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteBatch = async (batchId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa lô này không?')) {
-            try {
-                await apiClient(`/batches/${batchId}`, { method: 'DELETE' });
-                fetchBatches();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteBatch = async () => {
+        if (!batchToDelete) return;
+        try {
+            await apiClient(`/batches/${batchToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Lô ${batchToDelete.batchCode} đã được xóa.`, 'success');
+            fetchBatches();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setBatchToDelete(null);
         }
     };
 
@@ -98,8 +104,6 @@ const BatchesView: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Quản lý Lô</h2>
                 <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm Lô</button>
             </div>
-            
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
@@ -122,7 +126,7 @@ const BatchesView: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{new Date(batch.entryDate).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-4">
                                         <button onClick={() => handleOpenModal(batch)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                        <button onClick={() => handleDeleteBatch(batch.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => setBatchToDelete(batch)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -135,6 +139,15 @@ const BatchesView: React.FC = () => {
                 <Modal title={'id' in editingBatch ? 'Sửa thông tin lô' : 'Thêm lô mới'} onClose={handleCloseModal}>
                     <BatchForm batch={editingBatch} onSave={handleSaveBatch} onCancel={handleCloseModal} />
                 </Modal>
+            )}
+
+            {batchToDelete && (
+                <ConfirmationModal
+                    title="Xóa Lô"
+                    message={`Bạn có chắc chắn muốn xóa lô ${batchToDelete.batchCode}?`}
+                    onConfirm={handleDeleteBatch}
+                    onCancel={() => setBatchToDelete(null)}
+                />
             )}
         </div>
     );

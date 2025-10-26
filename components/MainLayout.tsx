@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from './Header';
 import DashboardView from '../views/DashboardView';
@@ -16,6 +17,7 @@ import BatchesView from '../views/BatchesView';
 import PlotsView from '../views/PlotsView';
 import SeasonsView from '../views/SeasonsView';
 import ReportsView from '../views/ReportsView';
+import NotificationContainer from './NotificationContainer';
 
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
@@ -82,6 +84,7 @@ const MainLayout: React.FC = () => {
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                 {renderView()}
             </main>
+            <NotificationContainer />
         </div>
     );
 };

@@ -3,6 +3,7 @@ import React from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FarmProvider } from './contexts/FarmContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import MainLayout from './components/MainLayout';
 import LoginView from './views/LoginView';
 
@@ -32,7 +33,9 @@ const App = () => {
   return (
     <ThemeProvider>
         <AuthProvider>
-            <AppContent />
+            <NotificationProvider>
+                <AppContent />
+            </NotificationProvider>
         </AuthProvider>
     </ThemeProvider>
   );

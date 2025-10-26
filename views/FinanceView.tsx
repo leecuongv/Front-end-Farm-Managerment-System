@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FinancialTransaction, Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialTransactionState: Omit<FinancialTransaction, 'id' | 'recordedBy'> = {
@@ -23,12 +26,13 @@ const PnLCard: React.FC<{ title: string; value: string; color: string; }> = ({ t
 
 const FinanceView: React.FC = () => {
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
     const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | Omit<FinancialTransaction, 'id' | 'recordedBy'> | null>(null);
+    const [transactionToDelete, setTransactionToDelete] = useState<FinancialTransaction | null>(null);
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -38,7 +42,6 @@ const FinanceView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [transData, batchesData] = await Promise.all([
                 apiClient<FinancialTransaction[]>(`/financial-transactions?farmId=${selectedFarm.id}`),
@@ -47,11 +50,11 @@ const FinanceView: React.FC = () => {
             setTransactions(transData);
             setBatches(batchesData);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchData();
@@ -81,21 +84,25 @@ const FinanceView: React.FC = () => {
         const method = isEditing ? 'PUT' : 'POST';
         try {
             await apiClient(endpoint, { method, body: JSON.stringify(data) });
+            addNotification(`Giao dịch đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
 
-    const handleDeleteTransaction = async (id: string) => {
-        if (window.confirm('Bạn có chắc muốn xóa giao dịch này?')) {
-            try {
-                await apiClient(`/financial-transactions/${id}`, { method: 'DELETE' });
-                fetchData();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteTransaction = async () => {
+        if (!transactionToDelete) return;
+
+        try {
+            await apiClient(`/financial-transactions/${transactionToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Giao dịch đã được xóa.`, 'success');
+            fetchData();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setTransactionToDelete(null);
         }
     };
 
@@ -105,8 +112,7 @@ const FinanceView: React.FC = () => {
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Quản lý Tài chính</h2>
-            {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <PnLCard title="Tổng doanh thu" value={formatCurrency(totalRevenue)} color="text-green-500" />
                 <PnLCard title="Tổng chi phí" value={formatCurrency(totalExpense)} color="text-red-500" />
@@ -143,7 +149,7 @@ const FinanceView: React.FC = () => {
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${t.type === 'REVENUE' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-4">
                                         <button onClick={() => handleOpenModal(t)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                        <button onClick={() => handleDeleteTransaction(t.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => setTransactionToDelete(t)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -156,6 +162,15 @@ const FinanceView: React.FC = () => {
                 <Modal title={'id' in editingTransaction ? 'Sửa giao dịch' : 'Thêm giao dịch'} onClose={handleCloseModal}>
                     <TransactionForm transaction={editingTransaction} batches={batches} onSave={handleSaveTransaction} onCancel={handleCloseModal} />
                 </Modal>
+            )}
+
+            {transactionToDelete && (
+                <ConfirmationModal
+                    title="Xóa Giao dịch"
+                    message="Bạn có chắc chắn muốn xóa giao dịch này?"
+                    onConfirm={handleDeleteTransaction}
+                    onCancel={() => setTransactionToDelete(null)}
+                />
             )}
         </div>
     );

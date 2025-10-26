@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plot } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialPlotState: Omit<Plot, 'id'> = {
@@ -15,11 +18,12 @@ const initialPlotState: Omit<Plot, 'id'> = {
 const PlotsView: React.FC = () => {
     const [plots, setPlots] = useState<Plot[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlot, setEditingPlot] = useState<Plot | Omit<Plot, 'id'> | null>(null);
+    const [plotToDelete, setPlotToDelete] = useState<Plot | null>(null);
     
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchPlots = useCallback(async () => {
         if (!selectedFarm) {
@@ -28,16 +32,15 @@ const PlotsView: React.FC = () => {
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const data = await apiClient<Plot[]>(`/plots?farmId=${selectedFarm.id}`);
             setPlots(data);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
     useEffect(() => {
         fetchPlots();
@@ -56,21 +59,24 @@ const PlotsView: React.FC = () => {
         
         try {
             await apiClient(endpoint, { method, body: JSON.stringify(plotData) });
+            addNotification(`Lô đất đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchPlots();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeletePlot = async (plotId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa lô đất này không?')) {
-            try {
-                await apiClient(`/plots/${plotId}`, { method: 'DELETE' });
-                fetchPlots();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeletePlot = async () => {
+        if (!plotToDelete) return;
+        try {
+            await apiClient(`/plots/${plotToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Lô đất ${plotToDelete.name} đã được xóa.`, 'success');
+            fetchPlots();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setPlotToDelete(null);
         }
     };
 
@@ -83,8 +89,6 @@ const PlotsView: React.FC = () => {
                 <h2 className="text-2xl font-bold">Quản lý Lô đất</h2>
                 <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm Lô đất</button>
             </div>
-            
-            {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
@@ -105,7 +109,7 @@ const PlotsView: React.FC = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">{plot.location}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-4">
                                         <button onClick={() => handleOpenModal(plot)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                        <button onClick={() => handleDeletePlot(plot.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                        <button onClick={() => setPlotToDelete(plot)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -115,6 +119,7 @@ const PlotsView: React.FC = () => {
             </div>
 
             {isModalOpen && editingPlot && <Modal title={'id' in editingPlot ? 'Sửa Lô đất' : 'Thêm Lô đất'} onClose={handleCloseModal}><PlotForm plot={editingPlot} onSave={handleSavePlot} onCancel={handleCloseModal} /></Modal>}
+            {plotToDelete && <ConfirmationModal title="Xóa Lô đất" message={`Bạn có chắc muốn xóa lô đất ${plotToDelete.name}?`} onConfirm={handleDeletePlot} onCancel={() => setPlotToDelete(null)} />}
         </div>
     );
 };

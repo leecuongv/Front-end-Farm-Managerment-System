@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState } from 'react';
 import { Farm } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialFarmState: Omit<Farm, 'id'> = {
@@ -12,9 +15,10 @@ const initialFarmState: Omit<Farm, 'id'> = {
 
 const FarmManagementView: React.FC = () => {
     const { farms, isLoading: isLoadingFarms, refetchFarms } = useFarm();
-    const [error, setError] = useState<string | null>(null);
+    const { addNotification } = useNotification();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingFarm, setEditingFarm] = useState<Farm | Omit<Farm, 'id'> | null>(null);
+    const [farmToDelete, setFarmToDelete] = useState<Farm | null>(null);
     
     const handleOpenModal = (farm: Farm | null = null) => {
         setEditingFarm(farm || initialFarmState);
@@ -36,21 +40,24 @@ const FarmManagementView: React.FC = () => {
                 method,
                 body: JSON.stringify(farmData),
             });
+            addNotification(`Trang trại đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             refetchFarms();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteFarm = async (farmId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa trang trại này không? Việc này có thể ảnh hưởng đến dữ liệu liên quan.')) {
-            try {
-                await apiClient(`/farms/${farmId}`, { method: 'DELETE' });
-                refetchFarms();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteFarm = async () => {
+        if (!farmToDelete) return;
+        try {
+            await apiClient(`/farms/${farmToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Trang trại ${farmToDelete.name} đã được xóa.`, 'success');
+            refetchFarms();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setFarmToDelete(null);
         }
     };
 
@@ -73,8 +80,6 @@ const FarmManagementView: React.FC = () => {
                     Thêm trang trại
                 </button>
             </div>
-            
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
@@ -95,7 +100,7 @@ const FarmManagementView: React.FC = () => {
                                         <button onClick={() => handleOpenModal(farm)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteFarm(farm.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
+                                        <button onClick={() => setFarmToDelete(farm)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -123,6 +128,15 @@ const FarmManagementView: React.FC = () => {
                         onCancel={handleCloseModal} 
                     />
                 </Modal>
+            )}
+
+            {farmToDelete && (
+                <ConfirmationModal
+                    title="Xóa Trang trại"
+                    message={`Bạn có chắc chắn muốn xóa trang trại ${farmToDelete.name}? Việc này có thể ảnh hưởng đến dữ liệu liên quan.`}
+                    onConfirm={handleDeleteFarm}
+                    onCancel={() => setFarmToDelete(null)}
+                />
             )}
         </div>
     );

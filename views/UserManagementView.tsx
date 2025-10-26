@@ -1,9 +1,12 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Role, Farm } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,24 +24,24 @@ const UserManagementView: React.FC = () => {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | (Omit<User, 'id' | 'avatarUrl'> & { password?: string }) | null>(null);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
     
     const { farms } = useFarm();
+    const { addNotification } = useNotification();
 
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
-        setError(null);
         try {
             const data = await apiClient<User[]>('/users');
             setUsers(data.map(u => ({...u, avatarUrl: `https://picsum.photos/seed/${u.id}/100`})));
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [addNotification]);
 
     useEffect(() => {
         fetchUsers();
@@ -58,33 +61,31 @@ const UserManagementView: React.FC = () => {
         const isEditing = 'id' in userData;
         const endpoint = isEditing ? `/users/${userData.id}` : '/users';
         const method = isEditing ? 'PUT' : 'POST';
-
-        // For simplicity, PUT will just update the core fields.
-        // Specific actions like assign-farm and activate are handled separately.
-        // Backend should be designed to handle a general PUT for user info.
         
         try {
-            // NOTE: Backend API reference doesn't specify a general PUT for users.
-            // This assumes one exists. If not, edit would need to be a series of specific API calls.
             await apiClient(endpoint, {
                 method,
                 body: JSON.stringify(userData),
             });
+            addNotification(`Người dùng đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseModal();
             fetchUsers();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
     
-    const handleDeleteUser = async (userId: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa người dùng này không?')) {
-            try {
-                await apiClient(`/users/${userId}`, { method: 'DELETE' });
-                fetchUsers();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteUser = async () => {
+        if (!userToDelete) return;
+
+        try {
+            await apiClient(`/users/${userToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Người dùng ${userToDelete.fullName} đã được xóa.`, 'success');
+            fetchUsers();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setUserToDelete(null);
         }
     };
 
@@ -94,9 +95,10 @@ const UserManagementView: React.FC = () => {
                 method: 'POST',
                 body: JSON.stringify({ isActive: !user.isActive }),
             });
+            addNotification(`Trạng thái của người dùng ${user.fullName} đã được cập nhật.`, 'success');
             fetchUsers();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
 
@@ -121,8 +123,6 @@ const UserManagementView: React.FC = () => {
                 </button>
             </div>
             
-             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -163,7 +163,7 @@ const UserManagementView: React.FC = () => {
                                             <EditIcon className="w-5 h-5" />
                                         </button>
                                         <button 
-                                            onClick={() => handleDeleteUser(user.id)} 
+                                            onClick={() => setUserToDelete(user)} 
                                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                             disabled={user.id === currentUser?.id}
                                         >
@@ -195,6 +195,15 @@ const UserManagementView: React.FC = () => {
                         onCancel={handleCloseModal} 
                     />
                 </Modal>
+            )}
+
+            {userToDelete && (
+                <ConfirmationModal
+                    title="Xóa Người dùng"
+                    message={`Bạn có chắc chắn muốn xóa người dùng ${userToDelete.fullName}?`}
+                    onConfirm={handleDeleteUser}
+                    onCancel={() => setUserToDelete(null)}
+                />
             )}
         </div>
     );

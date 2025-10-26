@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,6 +20,13 @@ const KPICard: React.FC<{ title: string; value: string | number; subtext?: strin
         </div>
     );
 };
+
+const ChartPlaceholder: React.FC<{ message: string }> = ({ message }) => (
+    <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+        {message}
+    </div>
+);
+
 
 const DashboardView: React.FC = () => {
     const { theme } = useTheme();
@@ -118,7 +126,7 @@ const DashboardView: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <KPICard title="Tổng số vật nuôi" value={kpiData.totalAnimals} />
                 <KPICard title="Vật nuôi khỏe mạnh" value={kpiData.healthyAnimals} subtext={`${kpiData.totalAnimals > 0 ? ((kpiData.healthyAnimals/kpiData.totalAnimals)*100).toFixed(1) : 0}%`} />
                 <KPICard title="Công việc cần làm" value={kpiData.tasksTodo} />
@@ -128,31 +136,35 @@ const DashboardView: React.FC = () => {
                 <div className="lg:col-span-3 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
                     <h3 className="font-semibold text-lg mb-4">Tổng quan tài chính (6 tháng gần nhất)</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={financialData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                            <XAxis dataKey="name" stroke={tickColor} />
-                            <YAxis stroke={tickColor} tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value as number)}/>
-                            <Tooltip
-                                contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}
-                                labelStyle={{ color: theme === 'dark' ? '#d1d5db' : '#374151' }}
-                                formatter={(value) => new Intl.NumberFormat('vi-VN').format(value as number)}
-                            />
-                            <Legend />
-                            <Bar dataKey="Revenue" fill={chartColors[4]} radius={[4, 4, 0, 0]} name="Doanh thu" />
-                            <Bar dataKey="Expense" fill={chartColors[3]} radius={[4, 4, 0, 0]} name="Chi phí" />
-                        </BarChart>
+                        {financialData.length > 0 ? (
+                            <BarChart data={financialData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                                <XAxis dataKey="name" stroke={tickColor} />
+                                <YAxis stroke={tickColor} tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value as number)}/>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}
+                                    labelStyle={{ color: theme === 'dark' ? '#d1d5db' : '#374151' }}
+                                    formatter={(value) => new Intl.NumberFormat('vi-VN').format(value as number)}
+                                />
+                                <Legend />
+                                <Bar dataKey="Revenue" fill={chartColors[4]} radius={[4, 4, 0, 0]} name="Doanh thu" />
+                                <Bar dataKey="Expense" fill={chartColors[3]} radius={[4, 4, 0, 0]} name="Chi phí" />
+                            </BarChart>
+                        ) : <ChartPlaceholder message="Chưa có dữ liệu tài chính." />}
                     </ResponsiveContainer>
                 </div>
                 <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
                     <h3 className="font-semibold text-lg mb-4">Trạng thái công việc</h3>
                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={taskStatusData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name">
-                                {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}/>
-                            <Legend />
-                        </PieChart>
+                        {taskStatusData.length > 0 ? (
+                            <PieChart>
+                                <Pie data={taskStatusData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name">
+                                    {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}/>
+                                <Legend />
+                            </PieChart>
+                        ) : <ChartPlaceholder message="Chưa có công việc nào." />}
                     </ResponsiveContainer>
                 </div>
             </div>
@@ -160,28 +172,32 @@ const DashboardView: React.FC = () => {
                 <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
                     <h3 className="font-semibold text-lg mb-4">Phân bổ vật nuôi</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={animalTypeData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" >
-                                {animalTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}/>
-                            <Legend />
-                        </PieChart>
+                        {animalTypeData.length > 0 ? (
+                            <PieChart>
+                                <Pie data={animalTypeData} cx="50%" cy="50%" labelLine={false} outerRadius={100} dataKey="value" nameKey="name" >
+                                    {animalTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}/>
+                                <Legend />
+                            </PieChart>
+                        ) : <ChartPlaceholder message="Chưa có vật nuôi nào." />}
                     </ResponsiveContainer>
                 </div>
                 <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
                     <h3 className="font-semibold text-lg mb-4">Hàng tồn kho theo loại</h3>
                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={inventoryCategoryData} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                            <XAxis type="number" stroke={tickColor} />
-                            <YAxis type="category" dataKey="name" stroke={tickColor} width={80} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}
-                                labelStyle={{ color: theme === 'dark' ? '#d1d5db' : '#374151' }}
-                            />
-                            <Bar dataKey="value" fill={chartColors[5]} radius={[0, 4, 4, 0]} name="Số lượng" />
-                        </BarChart>
+                        {inventoryCategoryData.length > 0 ? (
+                            <BarChart data={inventoryCategoryData} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                                <XAxis type="number" stroke={tickColor} />
+                                <YAxis type="category" dataKey="name" stroke={tickColor} width={80} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff', borderColor: theme === 'dark' ? '#374151' : '#e5e7eb' }}
+                                    labelStyle={{ color: theme === 'dark' ? '#d1d5db' : '#374151' }}
+                                />
+                                <Bar dataKey="value" fill={chartColors[5]} radius={[0, 4, 4, 0]} name="Số lượng" />
+                            </BarChart>
+                        ) : <ChartPlaceholder message="Chưa có hàng tồn kho." />}
                     </ResponsiveContainer>
                 </div>
             </div>

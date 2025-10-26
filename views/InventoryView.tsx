@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { InventoryItem, InventoryLog, Enclosure, Animal, Batch, InventoryAudit, AuditItem } from '../types';
 import { useFarm } from '../contexts/FarmContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 
 const initialItemState: Omit<InventoryItem, 'id'> = {
@@ -25,28 +28,25 @@ const initialLogState: Omit<InventoryLog, 'id' | 'recordedBy'> = {
 
 const InventoryView: React.FC = () => {
     const { selectedFarm } = useFarm();
+    const { addNotification } = useNotification();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [logs, setLogs] = useState<InventoryLog[]>([]);
     const [audits, setAudits] = useState<InventoryAudit[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | Omit<InventoryItem, 'id'> | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
-            setItems([]);
-            setLogs([]);
-            setBatches([]);
-            setAudits([]);
+            setItems([]); setLogs([]); setBatches([]); setAudits([]);
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
-        setError(null);
         try {
             const [itemsData, logsData, batchesData, auditsData] = await Promise.all([
                 apiClient<InventoryItem[]>(`/inventory-items?farmId=${selectedFarm.id}`),
@@ -59,15 +59,13 @@ const InventoryView: React.FC = () => {
             setBatches(batchesData);
             setAudits(auditsData);
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm]);
+    }, [selectedFarm, addNotification]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleOpenItemModal = (item: InventoryItem | null = null) => {
         setEditingItem(item || { ...initialItemState, farmId: selectedFarm?.id || '' });
@@ -80,20 +78,23 @@ const InventoryView: React.FC = () => {
         const method = isEditing ? 'PUT' : 'POST';
         try {
             await apiClient(endpoint, { method, body: JSON.stringify(itemData) });
+            addNotification(`Vật phẩm đã được ${isEditing ? 'cập nhật' : 'tạo'} thành công.`, 'success');
             handleCloseItemModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
-    const handleDeleteItem = async (itemId: string) => {
-        if (window.confirm('Bạn có chắc muốn xóa vật phẩm này?')) {
-            try {
-                await apiClient(`/inventory-items/${itemId}`, { method: 'DELETE' });
-                fetchData();
-            } catch (err: any) {
-                setError(err.message);
-            }
+    const handleDeleteItem = async () => {
+        if (!itemToDelete) return;
+        try {
+            await apiClient(`/inventory-items/${itemToDelete.id}`, { method: 'DELETE' });
+            addNotification(`Vật phẩm ${itemToDelete.name} đã được xóa.`, 'success');
+            fetchData();
+        } catch (err: any) {
+            addNotification(err.message, 'error');
+        } finally {
+            setItemToDelete(null);
         }
     };
 
@@ -105,10 +106,11 @@ const InventoryView: React.FC = () => {
             if (dataToSave.batchCode === '') delete dataToSave.batchCode;
             if (!dataToSave.usageTarget?.type || !dataToSave.usageTarget?.id) delete dataToSave.usageTarget;
             await apiClient(`/inventory-logs`, { method: 'POST', body: JSON.stringify(dataToSave) });
+            addNotification('Ghi chép kho đã được lưu thành công.', 'success');
             handleCloseLogModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
 
@@ -117,21 +119,19 @@ const InventoryView: React.FC = () => {
     const handleSaveAudit = async (auditData: Omit<InventoryAudit, 'id' | 'recordedBy'>) => {
         try {
             await apiClient('/inventory-audits', { method: 'POST', body: JSON.stringify(auditData) });
+            addNotification('Kiểm kê kho đã được lưu thành công.', 'success');
             handleCloseAuditModal();
             fetchData();
         } catch (err: any) {
-            setError(err.message);
+            addNotification(err.message, 'error');
         }
     };
-
 
     if (isLoading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div></div>;
     if (!selectedFarm) return <div className="p-4 text-center text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">Vui lòng chọn một trang trại để xem kho.</div>;
 
     return (
         <div className="space-y-8">
-            {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
-            
             <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Vật phẩm trong kho</h2>
@@ -162,7 +162,7 @@ const InventoryView: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.lowStockThreshold} {item.unit}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                             <button onClick={() => handleOpenItemModal(item)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
-                                            <button onClick={() => handleDeleteItem(item.id)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => setItemToDelete(item)} className="text-red-600 hover:text-red-900"><TrashIcon className="w-5 h-5" /></button>
                                         </td>
                                     </tr>
                                 ))}
@@ -237,6 +237,7 @@ const InventoryView: React.FC = () => {
             {isItemModalOpen && editingItem && <Modal title={'id' in editingItem ? 'Sửa vật phẩm' : 'Thêm vật phẩm'} onClose={handleCloseItemModal}><ItemForm item={editingItem} onSave={handleSaveItem} onCancel={handleCloseItemModal} /></Modal>}
             {isLogModalOpen && <Modal title="Ghi chép Kho" onClose={handleCloseLogModal}><LogForm items={items} batches={batches} farmId={selectedFarm.id} onSave={handleSaveLog} onCancel={handleCloseLogModal} /></Modal>}
             {isAuditModalOpen && <Modal title="Tạo Kiểm kê kho" onClose={handleCloseAuditModal}><AuditForm items={items} farmId={selectedFarm.id} onSave={handleSaveAudit} onCancel={handleCloseAuditModal} /></Modal>}
+            {itemToDelete && <ConfirmationModal title="Xóa Vật phẩm" message={`Bạn có chắc chắn muốn xóa ${itemToDelete.name}?`} onConfirm={handleDeleteItem} onCancel={() => setItemToDelete(null)} />}
         </div>
     );
 };
