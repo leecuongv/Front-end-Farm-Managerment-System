@@ -43,6 +43,33 @@ export interface Animal {
     feedPlanId?: string;
 }
 
+export interface AnimalEvent {
+    id: string;
+    animalId: string;
+    type: string;
+    date: string;
+    notes: string;
+}
+
+export interface Plot {
+    id: string;
+    farmId: string;
+    name: string;
+    area: number;
+    location: string;
+}
+
+export interface Season {
+    id: string;
+    farmId: string;
+    name: string;
+    cropType: string;
+    startDate: string;
+    endDate: string;
+    plotIds: string[];
+    notes: string;
+}
+
 export interface CropEvent {
     id: string;
     farmId: string;
@@ -85,6 +112,23 @@ export interface InventoryItem {
     unit: string;
     lowStockThreshold: number;
 }
+
+export interface AuditItem {
+    itemId: string;
+    itemName: string;
+    expectedQuantity: number;
+    countedQuantity: number;
+    discrepancy: number;
+}
+
+export interface InventoryAudit {
+    id: string;
+    farmId: string;
+    date: string;
+    recordedBy: string;
+    items: AuditItem[];
+}
+
 
 export interface InventoryLog {
     id: string;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { InventoryItem, InventoryLog, Enclosure, Animal, Batch } from '../types';
+import { InventoryItem, InventoryLog, Enclosure, Animal, Batch, InventoryAudit, AuditItem } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
@@ -27,11 +27,13 @@ const InventoryView: React.FC = () => {
     const { selectedFarm } = useFarm();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [logs, setLogs] = useState<InventoryLog[]>([]);
+    const [audits, setAudits] = useState<InventoryAudit[]>([]);
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<InventoryItem | Omit<InventoryItem, 'id'> | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -39,20 +41,23 @@ const InventoryView: React.FC = () => {
             setItems([]);
             setLogs([]);
             setBatches([]);
+            setAudits([]);
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
         setError(null);
         try {
-            const [itemsData, logsData, batchesData] = await Promise.all([
+            const [itemsData, logsData, batchesData, auditsData] = await Promise.all([
                 apiClient<InventoryItem[]>(`/inventory-items?farmId=${selectedFarm.id}`),
                 apiClient<InventoryLog[]>(`/inventory-logs?farmId=${selectedFarm.id}`),
-                apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`)
+                apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`),
+                apiClient<InventoryAudit[]>(`/inventory-audits?farmId=${selectedFarm.id}`)
             ]);
             setItems(itemsData);
             setLogs(logsData);
             setBatches(batchesData);
+            setAudits(auditsData);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -64,15 +69,11 @@ const InventoryView: React.FC = () => {
         fetchData();
     }, [fetchData]);
 
-    // Item modal handlers
     const handleOpenItemModal = (item: InventoryItem | null = null) => {
         setEditingItem(item || { ...initialItemState, farmId: selectedFarm?.id || '' });
         setIsItemModalOpen(true);
     };
-    const handleCloseItemModal = () => {
-        setIsItemModalOpen(false);
-        setEditingItem(null);
-    };
+    const handleCloseItemModal = () => setIsItemModalOpen(false);
     const handleSaveItem = async (itemData: InventoryItem | Omit<InventoryItem, 'id'>) => {
         const isEditing = 'id' in itemData;
         const endpoint = isEditing ? `/inventory-items/${itemData.id}` : `/inventory-items`;
@@ -96,21 +97,13 @@ const InventoryView: React.FC = () => {
         }
     };
 
-    // Log modal handlers
     const handleOpenLogModal = () => setIsLogModalOpen(true);
     const handleCloseLogModal = () => setIsLogModalOpen(false);
     const handleSaveLog = async (logData: Omit<InventoryLog, 'id' | 'recordedBy'>) => {
         try {
             const dataToSave = { ...logData };
-            if (dataToSave.batchCode === '') {
-                delete dataToSave.batchCode;
-            }
-            // FIX: The type of `usageTarget.type` is 'ENCLOSURE' | 'ANIMAL' and cannot be an empty string.
-            // Use a falsy check to handle the empty string coming from the form state without a type error.
-            if (!dataToSave.usageTarget?.type || !dataToSave.usageTarget?.id) {
-                delete dataToSave.usageTarget;
-            }
-
+            if (dataToSave.batchCode === '') delete dataToSave.batchCode;
+            if (!dataToSave.usageTarget?.type || !dataToSave.usageTarget?.id) delete dataToSave.usageTarget;
             await apiClient(`/inventory-logs`, { method: 'POST', body: JSON.stringify(dataToSave) });
             handleCloseLogModal();
             fetchData();
@@ -119,6 +112,19 @@ const InventoryView: React.FC = () => {
         }
     };
 
+    const handleOpenAuditModal = () => setIsAuditModalOpen(true);
+    const handleCloseAuditModal = () => setIsAuditModalOpen(false);
+    const handleSaveAudit = async (auditData: Omit<InventoryAudit, 'id' | 'recordedBy'>) => {
+        try {
+            await apiClient('/inventory-audits', { method: 'POST', body: JSON.stringify(auditData) });
+            handleCloseAuditModal();
+            fetchData();
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+
     if (isLoading) return <div className="flex justify-center items-center h-full"><div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div></div>;
     if (!selectedFarm) return <div className="p-4 text-center text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">Vui lòng chọn một trang trại để xem kho.</div>;
 
@@ -126,11 +132,11 @@ const InventoryView: React.FC = () => {
         <div className="space-y-8">
             {error && <div className="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">{error}</div>}
             
-            {/* Inventory Items Section */}
             <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Vật phẩm trong kho</h2>
                     <div className="space-x-2">
+                        <button onClick={handleOpenAuditModal} className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Tạo Kiểm kê</button>
                         <button onClick={handleOpenLogModal} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Ghi chép Kho</button>
                         <button onClick={() => handleOpenItemModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm vật phẩm</button>
                     </div>
@@ -165,8 +171,37 @@ const InventoryView: React.FC = () => {
                     </div>
                 </div>
             </div>
+            
+            <div>
+                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Lịch sử Kiểm kê</h2>
+                 <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
+                    {audits.map(audit => (
+                        <details key={audit.id} className="border-b dark:border-gray-700 last:border-b-0">
+                            <summary className="px-6 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex justify-between">
+                                <div>Kiểm kê ngày {new Date(audit.date).toLocaleDateString('vi-VN')}</div>
+                                <div className="text-xs text-gray-500">Bởi: {audit.recordedBy}</div>
+                            </summary>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800/50">
+                                <table className="min-w-full text-sm">
+                                    <thead><tr><th className="text-left p-2">Vật phẩm</th><th className="text-right p-2">Dự kiến</th><th className="text-right p-2">Thực tế</th><th className="text-right p-2">Chênh lệch</th></tr></thead>
+                                    <tbody>
+                                        {audit.items.map(item => (
+                                            <tr key={item.itemId}>
+                                                <td className="p-2">{item.itemName}</td>
+                                                <td className="text-right p-2">{item.expectedQuantity}</td>
+                                                <td className="text-right p-2">{item.countedQuantity}</td>
+                                                <td className={`text-right p-2 font-bold ${item.discrepancy > 0 ? 'text-green-500' : item.discrepancy < 0 ? 'text-red-500' : ''}`}>{item.discrepancy}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    ))}
+                    {audits.length === 0 && <p className="text-center p-6 text-gray-500">Chưa có đợt kiểm kê nào.</p>}
+                 </div>
+            </div>
 
-            {/* Inventory Logs Section */}
             <div>
                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Lịch sử Kho</h2>
                  <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
@@ -174,27 +209,23 @@ const InventoryView: React.FC = () => {
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-800">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vật phẩm</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã Lô</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loại GD</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Số lượng</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ghi chú</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Ngày</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Vật phẩm</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Mã Lô</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Loại GD</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Số lượng</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase">Ghi chú</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody>
                                 {logs.map(log => (
                                     <tr key={log.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(log.date).toLocaleDateString('vi-VN')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{items.find(i => i.id === log.itemId)?.name || log.itemId}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{log.batchCode || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${log.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {log.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{log.quantity}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{log.notes}</td>
+                                        <td className="px-6 py-4">{new Date(log.date).toLocaleDateString('vi-VN')}</td>
+                                        <td className="px-6 py-4 font-medium">{items.find(i => i.id === log.itemId)?.name || log.itemId}</td>
+                                        <td className="px-6 py-4">{log.batchCode || 'N/A'}</td>
+                                        <td className="px-6 py-4"><span className={`px-2 inline-flex font-semibold rounded-full text-xs ${log.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{log.type}</span></td>
+                                        <td className="px-6 py-4">{log.quantity}</td>
+                                        <td className="px-6 py-4">{log.notes}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -205,117 +236,78 @@ const InventoryView: React.FC = () => {
 
             {isItemModalOpen && editingItem && <Modal title={'id' in editingItem ? 'Sửa vật phẩm' : 'Thêm vật phẩm'} onClose={handleCloseItemModal}><ItemForm item={editingItem} onSave={handleSaveItem} onCancel={handleCloseItemModal} /></Modal>}
             {isLogModalOpen && <Modal title="Ghi chép Kho" onClose={handleCloseLogModal}><LogForm items={items} batches={batches} farmId={selectedFarm.id} onSave={handleSaveLog} onCancel={handleCloseLogModal} /></Modal>}
+            {isAuditModalOpen && <Modal title="Tạo Kiểm kê kho" onClose={handleCloseAuditModal}><AuditForm items={items} farmId={selectedFarm.id} onSave={handleSaveAudit} onCancel={handleCloseAuditModal} /></Modal>}
         </div>
     );
 };
 
-// ItemForm Component
-const ItemForm: React.FC<{ item: InventoryItem | Omit<InventoryItem, 'id'>, onSave: (data: any) => void, onCancel: () => void }> = ({ item, onSave, onCancel }) => {
+const ItemForm: React.FC<{ item: any, onSave: (data: any) => void, onCancel: () => void }> = ({ item, onSave, onCancel }) => {
     const [formData, setFormData] = useState(item);
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+        setFormData((prev:any) => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
     };
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Form fields for name, category, quantity, unit, lowStockThreshold */}
-            <input name="name" value={formData.name} onChange={handleChange} placeholder="Tên vật phẩm" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            <input name="category" value={formData.category} onChange={handleChange} placeholder="Loại" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            <div className="flex gap-4">
-                <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-                <input name="unit" value={formData.unit} onChange={handleChange} placeholder="Đơn vị (kg, l)" required className="mt-1 block w-1/3 rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            </div>
-            <input type="number" name="lowStockThreshold" value={formData.lowStockThreshold} onChange={handleChange} placeholder="Ngưỡng báo hết" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button>
-            </div>
-        </form>
-    );
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+    return <form onSubmit={handleSubmit} className="space-y-4">
+        <input name="name" value={formData.name} onChange={handleChange} placeholder="Tên vật phẩm" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        <input name="category" value={formData.category} onChange={handleChange} placeholder="Loại" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        <div className="flex gap-4">
+            <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+            <input name="unit" value={formData.unit} onChange={handleChange} placeholder="Đơn vị (kg, l)" required className="w-1/3 p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        </div>
+        <input type="number" name="lowStockThreshold" value={formData.lowStockThreshold} onChange={handleChange} placeholder="Ngưỡng báo hết" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600">Hủy</button><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button></div>
+    </form>;
 };
 
-// LogForm Component
 const LogForm: React.FC<{ items: InventoryItem[], batches: Batch[], farmId: string, onSave: (data: any) => void, onCancel: () => void }> = ({ items, batches, farmId, onSave, onCancel }) => {
     const [formData, setFormData] = useState({ ...initialLogState, farmId });
     const [enclosures, setEnclosures] = useState<Enclosure[]>([]);
     const [animals, setAnimals] = useState<Animal[]>([]);
+    useEffect(() => { if (formData.type === 'OUT') { apiClient<Enclosure[]>(`/enclosures?farmId=${farmId}`).then(setEnclosures); apiClient<Animal[]>(`/animals?farmId=${farmId}`).then(setAnimals); } }, [formData.type, farmId]);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { setFormData(prev => ({ ...prev, [e.target.name]: e.target.name === 'quantity' ? parseFloat(e.target.value) : e.target.value })); };
+    const handleTargetChange = (e: React.ChangeEvent<HTMLSelectElement>) => { setFormData(prev => ({ ...prev, usageTarget: { ...prev.usageTarget, [e.target.name]: e.target.value } as any })); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+    return <form onSubmit={handleSubmit} className="space-y-4">
+        <select name="itemId" value={formData.itemId} onChange={handleChange} required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Chọn vật phẩm</option>{items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select>
+        <div className="flex gap-4">
+            <select name="type" value={formData.type} onChange={handleChange} required className="w-1/3 p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="OUT">Xuất</option><option value="IN">Nhập</option></select>
+            <input type="number" step="any" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        </div>
+        <select name="batchCode" value={formData.batchCode || ''} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Lô (Tùy chọn)</option>{batches.filter(b => b.type === 'INVENTORY').map(b => <option key={b.id} value={b.batchCode}>{b.batchCode}</option>)}</select>
+        {formData.type === 'OUT' && <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700">
+            <h3 className="text-sm font-medium">Mục tiêu sử dụng (Tùy chọn)</h3>
+            <select name="type" value={formData.usageTarget?.type || ''} onChange={handleTargetChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Chọn loại mục tiêu</option><option value="ENCLOSURE">Chuồng trại</option><option value="ANIMAL">Vật nuôi</option></select>
+            {formData.usageTarget?.type === 'ENCLOSURE' && <select name="id" value={formData.usageTarget?.id || ''} onChange={handleTargetChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Chọn chuồng</option>{enclosures.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select>}
+            {formData.usageTarget?.type === 'ANIMAL' && <select name="id" value={formData.usageTarget?.id || ''} onChange={handleTargetChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Chọn vật nuôi</option>{animals.map(a => <option key={a.id} value={a.id}>{a.tagId} - {a.species}</option>)}</select>}
+        </div>}
+        <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Ghi chú" rows={3} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        <input type="date" name="date" value={formData.date} onChange={handleChange} required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
+        <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600">Hủy</button><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button></div>
+    </form>;
+};
 
-    useEffect(() => {
-        if (formData.type === 'OUT') {
-            apiClient<Enclosure[]>(`/enclosures?farmId=${farmId}`).then(setEnclosures);
-            apiClient<Animal[]>(`/animals?farmId=${farmId}`).then(setAnimals);
-        }
-    }, [formData.type, farmId]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'quantity' ? parseFloat(value) : value }));
+const AuditForm: React.FC<{ items: InventoryItem[], farmId: string, onSave: (data: any) => void, onCancel: () => void }> = ({ items, farmId, onSave, onCancel }) => {
+    const [auditItems, setAuditItems] = useState<AuditItem[]>(items.map(item => ({ itemId: item.id, itemName: item.name, expectedQuantity: item.quantity, countedQuantity: item.quantity, discrepancy: 0 })));
+    const handleCountChange = (itemId: string, counted: number) => {
+        setAuditItems(currentItems => currentItems.map(item => item.itemId === itemId ? { ...item, countedQuantity: counted, discrepancy: counted - item.expectedQuantity } : item));
     };
-
-    const handleTargetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, usageTarget: { ...prev.usageTarget, [name]: value } as any }));
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        onSave({ farmId, date: new Date().toISOString().split('T')[0], items: auditItems });
     };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <select name="itemId" value={formData.itemId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                <option value="">Chọn vật phẩm</option>
-                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-             <div className="flex gap-4">
-                <select name="type" value={formData.type} onChange={handleChange} required className="mt-1 block w-1/3 rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                    <option value="OUT">Xuất</option>
-                    <option value="IN">Nhập</option>
-                </select>
-                <input type="number" step="any" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-             </div>
-             <div>
-                <label htmlFor="batchCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lô (Tùy chọn)</label>
-                <select name="batchCode" id="batchCode" value={formData.batchCode || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                    <option value="">Không có</option>
-                    {batches.filter(b => b.type === 'INVENTORY').map(b => <option key={b.id} value={b.batchCode}>{b.batchCode}</option>)}
-                </select>
-             </div>
-             {formData.type === 'OUT' && (
-                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3">
-                    <h3 className="text-sm font-medium">Mục tiêu sử dụng (Tùy chọn)</h3>
-                     <select name="type" value={formData.usageTarget?.type || ''} onChange={handleTargetChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                        <option value="">Chọn loại mục tiêu</option>
-                        <option value="ENCLOSURE">Chuồng trại</option>
-                        <option value="ANIMAL">Vật nuôi</option>
-                    </select>
-                    {formData.usageTarget?.type === 'ENCLOSURE' && (
-                        <select name="id" value={formData.usageTarget?.id || ''} onChange={handleTargetChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                            <option value="">Chọn chuồng</option>
-                            {enclosures.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                        </select>
-                    )}
-                    {formData.usageTarget?.type === 'ANIMAL' && (
-                         <select name="id" value={formData.usageTarget?.id || ''} onChange={handleTargetChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                            <option value="">Chọn vật nuôi</option>
-                            {animals.map(a => <option key={a.id} value={a.id}>{a.tagId} - {a.species}</option>)}
-                        </select>
-                    )}
+    return <form onSubmit={handleSubmit}>
+        <div className="max-h-96 overflow-y-auto space-y-2 p-1">
+            {auditItems.map(item => (
+                <div key={item.itemId} className="grid grid-cols-3 gap-2 items-center">
+                    <label className="truncate">{item.itemName}</label>
+                    <span className="text-center p-2 rounded-md bg-gray-100 dark:bg-gray-700">{item.expectedQuantity}</span>
+                    <input type="number" value={item.countedQuantity} onChange={e => handleCountChange(item.itemId, parseInt(e.target.value) || 0)} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
                 </div>
-             )}
-            <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Ghi chú" rows={3} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2"/>
-            <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button>
-            </div>
-        </form>
-    );
+            ))}
+        </div>
+        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t dark:border-gray-700"><button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600">Hủy</button><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu Kiểm kê</button></div>
+    </form>;
 };
 
 export default InventoryView;

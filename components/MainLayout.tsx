@@ -13,6 +13,9 @@ import TasksView from '../views/TasksView';
 import MyTasksView from '../views/MyTasksView';
 import FinanceView from '../views/FinanceView';
 import BatchesView from '../views/BatchesView';
+import PlotsView from '../views/PlotsView';
+import SeasonsView from '../views/SeasonsView';
+import ReportsView from '../views/ReportsView';
 
 
 const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
@@ -37,6 +40,10 @@ const MainLayout: React.FC = () => {
                 return <DashboardView />;
             case 'livestock':
                 return <LivestockView />;
+            case 'plots':
+                return <PlotsView />;
+            case 'seasons':
+                return <SeasonsView />;
             case 'crops':
                 return <CropsView />;
             case 'enclosures':
@@ -53,6 +60,8 @@ const MainLayout: React.FC = () => {
                 return <MyTasksView />;
             case 'finance':
                 return <FinanceView />;
+            case 'reports':
+                return <ReportsView />;
             case 'users':
                 return <UserManagementView />;
             case 'farms':

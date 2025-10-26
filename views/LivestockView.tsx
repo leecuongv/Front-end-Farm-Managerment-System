@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Animal, Batch } from '../types';
+import { Animal, Batch, AnimalEvent } from '../types';
 import { useFarm } from '../contexts/FarmContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ActivityIcon } from '../constants';
 import Modal from '../components/Modal';
 import apiClient from '../apiClient';
 
 const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
 const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
+const EVENT_TYPES = ['VACCINATION', 'TREATMENT', 'HEALTH_CHECK', 'WEIGHING', 'BIRTH'];
+
 
 const initialAnimalState: Omit<Animal, 'id' | 'enclosureId'> = {
     farmId: '',
@@ -24,7 +26,9 @@ const LivestockView: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAnimal, setEditingAnimal] = useState<Animal | Omit<Animal, 'id' | 'enclosureId'> | null>(null);
-    
+    const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
+    const [selectedAnimalForEvents, setSelectedAnimalForEvents] = useState<Animal | null>(null);
+
     const { selectedFarm } = useFarm();
 
     const fetchData = useCallback(async () => {
@@ -67,6 +71,16 @@ const LivestockView: React.FC = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingAnimal(null);
+    };
+
+    const handleOpenEventsModal = (animal: Animal) => {
+        setSelectedAnimalForEvents(animal);
+        setIsEventsModalOpen(true);
+    };
+
+    const handleCloseEventsModal = () => {
+        setIsEventsModalOpen(false);
+        setSelectedAnimalForEvents(null);
     };
 
     const handleSaveAnimal = async (animalData: Animal | Omit<Animal, 'id' | 'enclosureId'>) => {
@@ -157,10 +171,13 @@ const LivestockView: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                                        <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
+                                        <button onClick={() => handleOpenEventsModal(animal)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200" title="Sự kiện">
+                                            <ActivityIcon className="w-5 h-5" />
+                                        </button>
+                                        <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200" title="Sửa">
                                             <EditIcon className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => handleDeleteAnimal(animal.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200">
+                                        <button onClick={() => handleDeleteAnimal(animal.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200" title="Xóa">
                                             <TrashIcon className="w-5 h-5" />
                                         </button>
                                     </td>
@@ -188,6 +205,15 @@ const LivestockView: React.FC = () => {
                         onSave={handleSaveAnimal} 
                         onCancel={handleCloseModal} 
                     />
+                </Modal>
+            )}
+
+            {isEventsModalOpen && selectedAnimalForEvents && (
+                <Modal 
+                    title={`Sự kiện cho vật nuôi: ${selectedAnimalForEvents.tagId}`} 
+                    onClose={handleCloseEventsModal}
+                >
+                    <AnimalEvents animal={selectedAnimalForEvents} />
                 </Modal>
             )}
         </div>
@@ -260,6 +286,81 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, batches, onSave, onCanc
                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu</button>
             </div>
         </form>
+    );
+};
+
+const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
+    const [events, setEvents] = useState<AnimalEvent[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [newEvent, setNewEvent] = useState({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
+
+    const fetchEvents = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await apiClient<AnimalEvent[]>(`/animal-events?animalId=${animal.id}`);
+            setEvents(data);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [animal.id]);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setNewEvent({ ...newEvent, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await apiClient('/animal-events', {
+                method: 'POST',
+                body: JSON.stringify({ ...newEvent, animalId: animal.id }),
+            });
+            setNewEvent({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
+            fetchEvents(); // Refresh list
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <div className="max-h-60 overflow-y-auto border dark:border-gray-700 rounded-lg p-2 space-y-2">
+                {isLoading && <p>Đang tải sự kiện...</p>}
+                {!isLoading && events.length === 0 && <p className="text-center text-gray-500">Chưa có sự kiện nào.</p>}
+                {events.map(event => (
+                    <div key={event.id} className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="font-semibold text-primary-600 dark:text-primary-400">{event.type}</span>
+                            <span>{new Date(event.date).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{event.notes}</p>
+                    </div>
+                ))}
+            </div>
+            <div>
+                <h4 className="font-semibold mb-2">Thêm sự kiện mới</h4>
+                {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+                <form onSubmit={handleSubmit} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <select name="type" value={newEvent.type} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                            {EVENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        </select>
+                        <input type="date" name="date" value={newEvent.date} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
+                    </div>
+                    <textarea name="notes" value={newEvent.notes} onChange={handleChange} placeholder="Ghi chú" rows={2} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"></textarea>
+                    <div className="text-right">
+                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Lưu sự kiện</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 };
 

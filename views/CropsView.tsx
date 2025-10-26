@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CropEvent } from '../types';
+import { CropEvent, Plot, Season } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
@@ -16,6 +16,8 @@ const initialCropEventState: Omit<CropEvent, 'id' | 'recordedBy'> = {
 
 const CropsView: React.FC = () => {
     const [cropEvents, setCropEvents] = useState<CropEvent[]>([]);
+    const [plots, setPlots] = useState<Plot[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,17 +25,25 @@ const CropsView: React.FC = () => {
     
     const { selectedFarm } = useFarm();
 
-    const fetchCropEvents = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         if (!selectedFarm) {
             setCropEvents([]);
+            setPlots([]);
+            setSeasons([]);
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
         setError(null);
         try {
-            const eventsData = await apiClient<CropEvent[]>(`/crop-events?farmId=${selectedFarm.id}`);
+            const [eventsData, plotsData, seasonsData] = await Promise.all([
+                apiClient<CropEvent[]>(`/crop-events?farmId=${selectedFarm.id}`),
+                apiClient<Plot[]>(`/plots?farmId=${selectedFarm.id}`),
+                apiClient<Season[]>(`/seasons?farmId=${selectedFarm.id}`)
+            ]);
             setCropEvents(eventsData);
+            setPlots(plotsData);
+            setSeasons(seasonsData);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -42,8 +52,8 @@ const CropsView: React.FC = () => {
     }, [selectedFarm]);
 
     useEffect(() => {
-        fetchCropEvents();
-    }, [fetchCropEvents]);
+        fetchData();
+    }, [fetchData]);
 
     const handleOpenModal = (event: CropEvent | null = null) => {
         if (event) {
@@ -76,7 +86,7 @@ const CropsView: React.FC = () => {
                 body: JSON.stringify(eventData),
             });
             handleCloseModal();
-            fetchCropEvents();
+            fetchData();
         } catch (err: any) {
             setError(err.message);
         }
@@ -86,7 +96,7 @@ const CropsView: React.FC = () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa sự kiện mùa vụ này không?')) {
             try {
                 await apiClient(`/crop-events/${eventId}`, { method: 'DELETE' });
-                fetchCropEvents();
+                fetchData();
             } catch (err: any) {
                 setError(err.message);
             }
@@ -109,6 +119,9 @@ const CropsView: React.FC = () => {
          );
     }
 
+    const getPlotName = (plotId: string) => plots.find(p => p.id === plotId)?.name || plotId;
+    const getSeasonName = (seasonId: string) => seasons.find(s => s.id === seasonId)?.name || seasonId;
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -128,8 +141,8 @@ const CropsView: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Plot ID</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Season ID</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lô đất</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mùa vụ</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loại sự kiện</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ghi chú</th>
@@ -139,8 +152,8 @@ const CropsView: React.FC = () => {
                         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                             {cropEvents.length > 0 ? cropEvents.map((event) => (
                                 <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{event.plotId}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{event.seasonId}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{getPlotName(event.plotId)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{getSeasonName(event.seasonId)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{event.eventType}</span></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(event.date).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{event.notes}</td>
@@ -172,6 +185,8 @@ const CropsView: React.FC = () => {
                 >
                     <CropEventForm 
                         event={editingCropEvent}
+                        plots={plots}
+                        seasons={seasons}
                         onSave={handleSaveCropEvent} 
                         onCancel={handleCloseModal} 
                     />
@@ -183,14 +198,16 @@ const CropsView: React.FC = () => {
 
 interface CropEventFormProps {
     event: CropEvent | Omit<CropEvent, 'id' | 'recordedBy'>;
+    plots: Plot[];
+    seasons: Season[];
     onSave: (event: CropEvent | Omit<CropEvent, 'id' | 'recordedBy'>) => void;
     onCancel: () => void;
 }
 
-const CropEventForm: React.FC<CropEventFormProps> = ({ event, onSave, onCancel }) => {
+const CropEventForm: React.FC<CropEventFormProps> = ({ event, plots, seasons, onSave, onCancel }) => {
     const [formData, setFormData] = useState(event);
     
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ 
             ...prev, 
@@ -207,12 +224,18 @@ const CropEventForm: React.FC<CropEventFormProps> = ({ event, onSave, onCancel }
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="plotId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Plot ID</label>
-                    <input type="text" name="plotId" id="plotId" value={formData.plotId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                    <label htmlFor="plotId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Lô đất</label>
+                    <select name="plotId" id="plotId" value={formData.plotId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
+                        <option value="">Chọn lô đất</option>
+                        {plots.map(plot => <option key={plot.id} value={plot.id}>{plot.name}</option>)}
+                    </select>
                 </div>
                  <div>
-                    <label htmlFor="seasonId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Season ID</label>
-                    <input type="text" name="seasonId" id="seasonId" value={formData.seasonId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                    <label htmlFor="seasonId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Mùa vụ</label>
+                    <select name="seasonId" id="seasonId" value={formData.seasonId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
+                        <option value="">Chọn mùa vụ</option>
+                        {seasons.map(season => <option key={season.id} value={season.id}>{season.name}</option>)}
+                    </select>
                 </div>
                 <div>
                     <label htmlFor="eventType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại sự kiện</label>
