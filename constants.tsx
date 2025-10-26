@@ -113,7 +113,7 @@ export const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const NAV_LINKS = [
     { name: 'Bảng điều khiển', href: 'dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
     { name: 'Vật nuôi', href: 'livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Mùa vụ', href: 'crops', icon: CropsIcon, roles: [Role.MANAGER, Role.STAFF] },
+    { name: 'Sự kiện Mùa vụ', href: 'crops', icon: CropsIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Chuồng trại', href: 'enclosures', icon: EnclosuresIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kế hoạch ăn', href: 'feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
     { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },

@@ -218,8 +218,9 @@ const UserForm: React.FC<UserFormProps> = ({ user, allFarms, onSave, onCancel })
 
     const handleFarmChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         // FIX: Rewrite to ensure correct type inference for `option`.
-        // The original `Array.from` with a map function was causing `option` to be typed as `unknown`.
-        const selectedIds = Array.from(e.target.selectedOptions).map(option => option.value);
+        // Using the spread operator on `e.target.selectedOptions` correctly converts
+        // the HTMLCollection to an array of HTMLOptionElement, resolving the type issue.
+        const selectedIds = [...e.target.selectedOptions].map(option => option.value);
         setFormData(prev => ({...prev, farmIds: selectedIds }));
     };
 

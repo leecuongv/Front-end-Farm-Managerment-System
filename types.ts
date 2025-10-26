@@ -16,7 +16,7 @@ export interface User {
 }
 
 export interface Farm {
-    id: string;
+    id:string;
     name: string;
     location: string;
 }
@@ -47,8 +47,21 @@ export interface Crop {
     name: string;
     plantingDate: string;
     expectedHarvestDate: string;
+    actualHarvestDate?: string;
     status: 'PLANTED' | 'GROWING' | 'HARVESTED' | 'FAILED';
     area: number; // in square meters
+    notes?: string;
+}
+
+export interface CropEvent {
+    id: string;
+    farmId: string;
+    name: string;
+    eventType: 'PLANTING' | 'FERTILIZING' | 'PEST_CONTROL' | 'HARVESTING' | 'OTHER';
+    eventDate: string;
+    description: string;
+    area: number;
+    relatedCropId: string;
 }
 
 export interface FeedPlan {
