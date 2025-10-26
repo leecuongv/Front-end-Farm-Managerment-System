@@ -18,19 +18,8 @@ import PlotsView from '../views/PlotsView';
 import SeasonsView from '../views/SeasonsView';
 import ReportsView from '../views/ReportsView';
 import NotificationContainer from './NotificationContainer';
+import MobileSidebar from './MobileSidebar';
 
-
-const PlaceholderView: React.FC<{ viewName: string }> = ({ viewName }) => (
-    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4">{viewName}</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-            Phần này đang được xây dựng. Chức năng cho {viewName.toLowerCase()} sẽ được triển khai tại đây.
-        </p>
-        <div className="mt-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg h-96 flex items-center justify-center">
-            <p className="text-gray-400 dark:text-gray-500">Bảng dữ liệu {viewName.toLowerCase()} sắp ra mắt</p>
-        </div>
-    </div>
-);
 
 const MainLayout: React.FC = () => {
     const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -80,6 +69,12 @@ const MainLayout: React.FC = () => {
                 setCurrentView={setCurrentView}
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
+            />
+            <MobileSidebar 
+                isOpen={mobileMenuOpen} 
+                onClose={() => setMobileMenuOpen(false)}
+                currentView={currentView}
+                setCurrentView={setCurrentView}
             />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                 {renderView()}

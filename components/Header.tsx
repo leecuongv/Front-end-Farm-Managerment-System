@@ -1,46 +1,18 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { SunIcon, MoonIcon, LogoutIcon, FarmIcon, NAV_LINKS } from '../constants';
+import { SunIcon, MoonIcon, LogoutIcon, FarmIcon } from '../constants';
 import { ViewType } from '../constants';
 import { useFarm } from '../contexts/FarmContext';
-import { Role } from '../types';
+import NavLinks from './NavLinks';
+
 
 interface HeaderProps {
     currentView: ViewType;
     setCurrentView: (view: ViewType) => void;
     mobileMenuOpen: boolean;
     setMobileMenuOpen: (open: boolean) => void;
-}
-
-const NavLinks: React.FC<{
-    currentView: ViewType;
-    onLinkClick: (view: ViewType) => void;
-    className?: string;
-}> = ({ currentView, onLinkClick, className }) => {
-    const { user } = useAuth();
-    const filteredNavLinks = NAV_LINKS.filter(link =>
-        user && (user.role === Role.ADMIN || link.roles.includes(user.role))
-    );
-
-    return (
-        <nav className={className}>
-            {filteredNavLinks.map(link => (
-                <a
-                    key={link.name}
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); onLinkClick(link.href as ViewType); }}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${currentView === link.href
-                        ? 'bg-primary-50 text-primary-600 dark:bg-gray-800 dark:text-primary-400'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100'
-                        }`}
-                >
-                    <link.icon className="w-5 h-5 mr-2" />
-                    <span>{link.name}</span>
-                </a>
-            ))}
-        </nav>
-    );
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenuOpen, setMobileMenuOpen }) => {
@@ -53,7 +25,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
 
     const profileRef = useRef<HTMLDivElement>(null);
     const farmRef = useRef<HTMLDivElement>(null);
-    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -63,21 +34,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
             if (farmRef.current && !farmRef.current.contains(event.target as Node)) {
                 setFarmMenuOpen(false);
             }
-             if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-                setMobileMenuOpen(false);
-            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [setMobileMenuOpen]);
+    }, []);
     
     const handleNavLinkClick = (view: ViewType) => {
         setCurrentView(view);
-        setMobileMenuOpen(false);
     };
 
     return (
-        <header ref={mobileMenuRef} className="relative bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 z-10">
+        <header className="relative bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 z-20">
             <div className="flex items-center justify-between h-20 px-4 sm:px-6">
                 <div className="flex items-center">
                     <button
@@ -90,7 +57,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
                     </button>
                     <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">FarmSys</h1>
                      {/* Desktop Navigation */}
-                    <NavLinks currentView={currentView} onLinkClick={handleNavLinkClick} className="hidden lg:flex items-center space-x-2 ml-10"/>
+                    <div className="hidden lg:flex items-center ml-10 overflow-x-auto">
+                        <NavLinks currentView={currentView} onLinkClick={handleNavLinkClick} className="flex items-center space-x-1"/>
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-3 sm:space-x-5">
@@ -136,12 +105,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
                     </div>
                 </div>
             </div>
-             {/* Mobile Navigation */}
-             {mobileMenuOpen && (
-                 <div className="lg:hidden border-t border-gray-200 dark:border-gray-800">
-                    <NavLinks currentView={currentView} onLinkClick={handleNavLinkClick} className="flex flex-col p-4 space-y-2" />
-                 </div>
-             )}
         </header>
     );
 };
