@@ -1,4 +1,3 @@
-
 import React from 'react';
 import NavLinks from './NavLinks';
 
@@ -19,7 +18,7 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({ isOpen, onClose }) => {
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 right-0 h-full w-4/5 max-w-xs bg-white dark:bg-gray-950 shadow-xl z-40 transform transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed top-0 left-0 h-full w-4/5 max-w-xs bg-white dark:bg-gray-950 shadow-xl z-40 transform transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 role="dialog"
                 aria-modal="true"
             >
@@ -32,6 +31,7 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         <NavLinks
+                            isMobile={true}
                             onLinkClick={onClose}
                             className="flex flex-col p-2 space-y-1"
                         />

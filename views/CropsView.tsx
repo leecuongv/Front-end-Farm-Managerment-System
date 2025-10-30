@@ -1,21 +1,39 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CropEvent, Plot, Season } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
+import { cropEventTypeMap, translate } from '../utils/translations';
 
 const initialCropEventState: Omit<CropEvent, 'id' | 'recordedBy'> = {
     farmId: '',
     plotId: '',
     seasonId: '',
-    eventType: '',
+    eventType: 'PLANTING',
     date: new Date().toISOString().split('T')[0],
     notes: '',
 };
+
+const initialFilters = {
+    plotId: '',
+    eventType: '',
+    sortBy: 'date',
+    sortDirection: 'desc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
 
 const CropsView: React.FC = () => {
     const [cropEvents, setCropEvents] = useState<CropEvent[]>([]);
@@ -25,9 +43,18 @@ const CropsView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCropEvent, setEditingCropEvent] = useState<CropEvent | Omit<CropEvent, 'id' | 'recordedBy'> | null>(null);
     const [eventToDelete, setEventToDelete] = useState<CropEvent | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
+    const [debouncedEventType, setDebouncedEventType] = useState('');
 
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
+    
+     useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedEventType(filters.eventType);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [filters.eventType]);
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -39,8 +66,15 @@ const CropsView: React.FC = () => {
         }
         setIsLoading(true);
         try {
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                plotId: filters.plotId,
+                eventType: debouncedEventType,
+                sortBy: filters.sortBy,
+                sortDirection: filters.sortDirection,
+            });
             const [eventsData, plotsData, seasonsData] = await Promise.all([
-                apiClient<CropEvent[]>(`/crop-events?farmId=${selectedFarm.id}`),
+                apiClient<CropEvent[]>(`/crop-events?${queryParams}`),
                 apiClient<Plot[]>(`/plots?farmId=${selectedFarm.id}`),
                 apiClient<Season[]>(`/seasons?farmId=${selectedFarm.id}`)
             ]);
@@ -52,11 +86,18 @@ const CropsView: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, filters.plotId, filters.sortBy, filters.sortDirection, debouncedEventType]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const resetFilters = () => setFilters(initialFilters);
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
 
     const handleOpenModal = (event: CropEvent | null = null) => {
         if (event) {
@@ -140,6 +181,34 @@ const CropsView: React.FC = () => {
                 </button>
             </div>
 
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Lô đất:</label>
+                    <select value={filters.plotId} onChange={e => handleFilterChange('plotId', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {plots.map(plot => <option key={plot.id} value={plot.id}>{plot.name}</option>)}
+                    </select>
+                </div>
+                <div className="flex-grow min-w-[200px]">
+                    <input 
+                        type="text" 
+                        placeholder="Tìm kiếm theo loại sự kiện..." 
+                        className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"
+                        value={filters.eventType}
+                        onChange={e => handleFilterChange('eventType', e.target.value)}
+                    />
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowDownIcon className="w-5 h-5"/> : <ArrowUpIcon className="w-5 h-5"/>}
+                    <span className="sr-only">Sắp xếp theo ngày</span>
+                </button>
+                 {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
+            </div>
+
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -158,7 +227,7 @@ const CropsView: React.FC = () => {
                                 <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{getPlotName(event.plotId)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{getSeasonName(event.seasonId)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{event.eventType}</span></td>
+                                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{translate(cropEventTypeMap, event.eventType)}</span></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(event.date).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{event.notes}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
@@ -200,7 +269,7 @@ const CropsView: React.FC = () => {
             {eventToDelete && (
                 <ConfirmationModal
                     title="Xóa Sự kiện"
-                    message={`Bạn có chắc chắn muốn xóa sự kiện ${eventToDelete.eventType} vào ngày ${new Date(eventToDelete.date).toLocaleDateString('vi-VN')}?`}
+                    message={`Bạn có chắc chắn muốn xóa sự kiện ${translate(cropEventTypeMap, eventToDelete.eventType)} vào ngày ${new Date(eventToDelete.date).toLocaleDateString('vi-VN')}?`}
                     onConfirm={handleDeleteCropEvent}
                     onCancel={() => setEventToDelete(null)}
                 />
@@ -252,7 +321,9 @@ const CropEventForm: React.FC<CropEventFormProps> = ({ event, plots, seasons, on
                 </div>
                 <div>
                     <label htmlFor="eventType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại sự kiện</label>
-                    <input type="text" name="eventType" id="eventType" value={formData.eventType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700" />
+                    <select name="eventType" id="eventType" value={formData.eventType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
+                        {Object.entries(cropEventTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+                    </select>
                 </div>
                 <div>
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ngày</label>

@@ -180,3 +180,18 @@ export interface Batch {
     entryDate: string;
     relatedItemIds?: string[];
 }
+
+export interface NavLink {
+    name: string;
+    href: string;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    roles: Role[];
+}
+
+export interface NavGroup {
+    name: string;
+    roles: Role[];
+    children: NavLink[];
+}
+
+export type NavMenuItem = NavLink | NavGroup;

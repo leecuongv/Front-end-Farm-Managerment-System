@@ -1,10 +1,8 @@
-
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FeedPlan, FeedPlanStage, FeedDetail } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -18,12 +16,29 @@ const initialFeedPlanState: Omit<FeedPlan, 'id'> = {
     feedDetails: [],
 };
 
+const initialFilters = {
+    stage: '',
+    sortBy: 'name',
+    sortDirection: 'asc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
 const FeedPlansView: React.FC = () => {
     const [feedPlans, setFeedPlans] = useState<FeedPlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingFeedPlan, setEditingFeedPlan] = useState<FeedPlan | Omit<FeedPlan, 'id'> | null>(null);
     const [planToDelete, setPlanToDelete] = useState<FeedPlan | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
 
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
@@ -36,18 +51,28 @@ const FeedPlansView: React.FC = () => {
         }
         setIsLoading(true);
         try {
-            const data = await apiClient<FeedPlan[]>(`/feed-plans?farmId=${selectedFarm.id}`);
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                ...filters,
+            });
+            const data = await apiClient<FeedPlan[]>(`/feed-plans?${queryParams}`);
             setFeedPlans(data);
         } catch (err: any) {
             addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, filters]);
 
     useEffect(() => {
         fetchFeedPlans();
     }, [fetchFeedPlans]);
+
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+    const resetFilters = () => setFilters(initialFilters);
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
 
     const handleOpenModal = (plan: FeedPlan | null = null) => {
         setEditingFeedPlan(plan || { ...initialFeedPlanState, farmId: selectedFarm?.id || '' });
@@ -119,6 +144,27 @@ const FeedPlansView: React.FC = () => {
                 </button>
             </div>
             
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Giai đoạn:</label>
+                    <select value={filters.stage} onChange={e => handleFilterChange('stage', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {Object.entries(feedPlanStageMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+                    </select>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Sắp xếp theo tên:</label>
+                     <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                    </button>
+                </div>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
+            </div>
+
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

@@ -1,13 +1,7 @@
 import { API_BASE_URL } from './apiConfig';
+import { getStoredAuthData } from './utils/authStorage';
 import { User } from './types';
 
-// Helper to get auth data without creating dependency cycles with contexts
-function getAuthData(): { token: string | null; user: User | null } {
-    const token = localStorage.getItem('authToken');
-    const userStr = localStorage.getItem('authUser');
-    const user = userStr ? JSON.parse(userStr) : null;
-    return { token, user };
-}
 
 interface ApiClientOptions extends RequestInit {
     // We can add custom options here if needed later
@@ -17,7 +11,7 @@ async function apiClient<T>(
     endpoint: string,
     options: ApiClientOptions = {}
 ): Promise<T> {
-    const { token, user } = getAuthData();
+    const { token, user } = getStoredAuthData();
     
     const headers = new Headers(options.headers || {});
     if (!options.body || options.body instanceof FormData === false) {

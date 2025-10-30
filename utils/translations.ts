@@ -65,6 +65,22 @@ export const batchTypeMap: Record<string, string> = {
     'INVENTORY': 'Kho',
 };
 
+export const seasonStatusMap: Record<string, string> = {
+    'PLANNED': 'Dự kiến',
+    'ACTIVE': 'Đang diễn ra',
+    'COMPLETED': 'Hoàn thành',
+};
+
+export const cropEventTypeMap: Record<string, string> = {
+    'PLANTING': 'Gieo trồng',
+    'IRRIGATION': 'Tưới tiêu',
+    'FERTILIZING': 'Bón phân',
+    'PEST_CONTROL': 'Kiểm soát sâu bệnh',
+    'HARVEST': 'Thu hoạch',
+    'SOIL_PREPARATION': 'Chuẩn bị đất',
+};
+
+
 /**
  * A helper function to get a translation for a given key from a map.
  * Returns the original key if no translation is found.

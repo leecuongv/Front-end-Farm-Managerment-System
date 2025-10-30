@@ -1,10 +1,8 @@
-
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -18,12 +16,29 @@ const initialBatchState: Omit<Batch, 'id'> = {
     entryDate: new Date().toISOString().split('T')[0],
 };
 
+const initialFilters = {
+    type: '',
+    sortBy: 'entryDate',
+    sortDirection: 'desc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
 const BatchesView: React.FC = () => {
     const [batches, setBatches] = useState<Batch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBatch, setEditingBatch] = useState<Batch | Omit<Batch, 'id'> | null>(null);
     const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
     
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
@@ -36,18 +51,28 @@ const BatchesView: React.FC = () => {
         }
         setIsLoading(true);
         try {
-            const data = await apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`);
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                ...filters,
+            });
+            const data = await apiClient<Batch[]>(`/batches?${queryParams}`);
             setBatches(data);
         } catch (err: any) {
             addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, filters]);
 
     useEffect(() => {
         fetchBatches();
     }, [fetchBatches]);
+
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+    const resetFilters = () => setFilters(initialFilters);
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
 
     const handleOpenModal = (batch: Batch | null = null) => {
         setEditingBatch(batch || { ...initialBatchState, farmId: selectedFarm?.id || ''});
@@ -103,6 +128,31 @@ const BatchesView: React.FC = () => {
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Quản lý Lô</h2>
                 <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm Lô</button>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Loại Lô:</label>
+                    <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {Object.entries(batchTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Sắp xếp:</label>
+                    <select value={filters.sortBy} onChange={e => handleFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="entryDate">Ngày nhập</option>
+                        <option value="batchCode">Mã Lô</option>
+                    </select>
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                </button>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
             </div>
 
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
@@ -195,7 +245,7 @@ const BatchForm: React.FC<BatchFormProps> = ({ batch, onSave, onCancel }) => {
                 </div>
                 <div className="md:col-span-2">
                     <label htmlFor="description">Mô tả</label>
-                    <textarea name="description" id="description" value={formData.description} onChange={handleChange} required rows={3} className="mt-1 block w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
+                    <textarea name="description" id="description" value={formData.description} required rows={3} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
                 </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4">

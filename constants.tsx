@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Role } from './types';
+import { Role, NavMenuItem } from './types';
 
 export const SunIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -167,21 +167,55 @@ export const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 9 6 6 6-6"/></svg>
+);
 
-export const NAV_LINKS = [
-    { name: 'Bảng điều khiển', href: 'dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
-    { name: 'Vật nuôi', href: 'livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Lô đất', href: 'plots', icon: PlotIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Mùa vụ', href: 'seasons', icon: SeasonIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Sự kiện Mùa vụ', href: 'crops', icon: CropsIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Chuồng trại', href: 'enclosures', icon: EnclosuresIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Kế hoạch ăn', href: 'feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Kho', href: 'inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Quản lý Lô', href: 'batches', icon: BatchIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Công việc', href: 'tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
-    { name: 'Việc của tôi', href: 'my_tasks', icon: TasksIcon, roles: [Role.STAFF] },
-    { name: 'Tài chính', href: 'finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
-    { name: 'Báo cáo', href: 'reports', icon: ReportsIcon, roles: [Role.ADMIN, Role.MANAGER] },
-    { name: 'Quản lý người dùng', href: 'users', icon: UsersIcon, roles: [Role.ADMIN] },
-    { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
+
+export const NAV_MENU: NavMenuItem[] = [
+    { name: 'Bảng điều khiển', href: '/dashboard', icon: DashboardIcon, roles: [Role.ADMIN, Role.MANAGER, Role.STAFF] },
+    {
+        name: 'Chuồng trại',
+        roles: [Role.MANAGER, Role.STAFF],
+        children: [
+            { name: 'Vật nuôi', href: '/livestock', icon: LivestockIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Chuồng trại', href: '/enclosures', icon: EnclosuresIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Kế hoạch ăn', href: '/feed_plans', icon: FeedPlansIcon, roles: [Role.MANAGER, Role.STAFF] },
+        ]
+    },
+    {
+        name: 'Mùa vụ',
+        roles: [Role.MANAGER, Role.STAFF],
+        children: [
+            { name: 'Lô đất', href: '/plots', icon: PlotIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Mùa vụ', href: '/seasons', icon: SeasonIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Sự kiện Mùa vụ', href: '/crops', icon: CropsIcon, roles: [Role.MANAGER, Role.STAFF] },
+        ]
+    },
+    {
+        name: 'Quản lý kho',
+        roles: [Role.MANAGER, Role.STAFF],
+        children: [
+            { name: 'Kho', href: '/inventory', icon: InventoryIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Quản lý Lô', href: '/batches', icon: BatchIcon, roles: [Role.MANAGER, Role.STAFF] },
+        ]
+    },
+    {
+        name: 'Công việc',
+        roles: [Role.MANAGER, Role.STAFF],
+        children: [
+            { name: 'Công việc', href: '/tasks', icon: TasksIcon, roles: [Role.MANAGER, Role.STAFF] },
+            { name: 'Việc của tôi', href: '/my_tasks', icon: TasksIcon, roles: [Role.STAFF] },
+        ]
+    },
+    { name: 'Tài chính', href: '/finance', icon: FinanceIcon, roles: [Role.ADMIN, Role.MANAGER] },
+    { name: 'Báo cáo', href: '/reports', icon: ReportsIcon, roles: [Role.ADMIN, Role.MANAGER] },
+    {
+        name: 'Quản lý trang trại',
+        roles: [Role.ADMIN],
+        children: [
+            { name: 'Quản lý người dùng', href: '/users', icon: UsersIcon, roles: [Role.ADMIN] },
+            { name: 'Quản lý trang trại', href: '/farms', icon: FarmIcon, roles: [Role.ADMIN] },
+        ]
+    }
 ];
