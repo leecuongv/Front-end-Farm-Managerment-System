@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Animal, Batch, AnimalEvent } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon, ActivityIcon } from '../constants';
+import { EditIcon, TrashIcon, ActivityIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -12,6 +11,12 @@ const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
 const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
 const EVENT_TYPES = ['VACCINATION', 'TREATMENT', 'HEALTH_CHECK', 'WEIGHING', 'BIRTH'];
 
+const initialFilters = {
+    species: '',
+    status: '',
+    sortBy: 'tagId',
+    sortDirection: 'asc',
+};
 
 const initialAnimalState: Omit<Animal, 'id' | 'enclosureId'> = {
     farmId: '',
@@ -20,6 +25,16 @@ const initialAnimalState: Omit<Animal, 'id' | 'enclosureId'> = {
     animalType: 'YOUNG',
     status: 'HEALTHY',
     birthDate: new Date().toISOString().split('T')[0],
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
 };
 
 const LivestockView: React.FC = () => {
@@ -31,9 +46,18 @@ const LivestockView: React.FC = () => {
     const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
     const [selectedAnimalForEvents, setSelectedAnimalForEvents] = useState<Animal | null>(null);
     const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
+    const [debouncedSpecies, setDebouncedSpecies] = useState(filters.species);
 
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSpecies(filters.species);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [filters.species]);
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -44,8 +68,16 @@ const LivestockView: React.FC = () => {
         }
         setIsLoading(true);
         try {
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                species: debouncedSpecies,
+                status: filters.status,
+                sortBy: filters.sortBy,
+                sortDirection: filters.sortDirection,
+            });
+
             const [animalsData, batchesData] = await Promise.all([
-                apiClient<Animal[]>(`/animals?farmId=${selectedFarm.id}`),
+                apiClient<Animal[]>(`/animals?${queryParams}`),
                 apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`)
             ]);
             setAnimals(animalsData);
@@ -55,11 +87,19 @@ const LivestockView: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, debouncedSpecies, filters.status, filters.sortBy, filters.sortDirection]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+    
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+    
+    const resetFilters = () => {
+        setFilters(initialFilters);
+    };
 
     const handleOpenModal = (animal: Animal | null = null) => {
         if (animal) {
@@ -117,15 +157,9 @@ const LivestockView: React.FC = () => {
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div>
-            </div>
-        );
-    }
-    
-    if (!selectedFarm) {
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
+
+    if (!selectedFarm && !isLoading) {
          return (
              <div className="p-4 text-center text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 Vui lòng chọn một trang trại để xem vật nuôi.
@@ -145,59 +179,101 @@ const LivestockView: React.FC = () => {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã thẻ</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loài</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã Lô</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày sinh</th>
-                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                            {animals.length > 0 ? animals.map((animal) => (
-                                <tr key={animal.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{animal.tagId}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{animal.species}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{batches.find(b => b.id === animal.batchId)?.batchCode || 'N/A'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                            animal.status === 'HEALTHY' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
-                                            animal.status === 'SICK' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                                        }`}>
-                                            {animal.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString('vi-VN')}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                                        <button onClick={() => handleOpenEventsModal(animal)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200" title="Sự kiện">
-                                            <ActivityIcon className="w-5 h-5" />
-                                        </button>
-                                        <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200" title="Sửa">
-                                            <EditIcon className="w-5 h-5" />
-                                        </button>
-                                        <button onClick={() => setAnimalToDelete(animal)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200" title="Xóa">
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                                        Không tìm thấy vật nuôi nào cho trang trại này.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex-grow min-w-[200px]">
+                    <input 
+                        type="text" 
+                        placeholder="Tìm kiếm theo loài..." 
+                        className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"
+                        value={filters.species}
+                        onChange={e => handleFilterChange('species', e.target.value)}
+                    />
                 </div>
+                <div className="flex items-center gap-2">
+                    <label htmlFor="status" className="text-sm font-medium">Trạng thái:</label>
+                    <select id="status" value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {STATUS_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label htmlFor="sortBy" className="text-sm font-medium">Sắp xếp:</label>
+                    <select id="sortBy" value={filters.sortBy} onChange={e => handleFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="tagId">Mã thẻ</option>
+                        <option value="species">Loài</option>
+                        <option value="birthDate">Ngày sinh</option>
+                        <option value="status">Trạng thái</option>
+                    </select>
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                </button>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
             </div>
 
+             {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div>
+                </div>
+            ) : (
+                <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã thẻ</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Loài</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Mã Lô</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ngày sinh</th>
+                                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                {animals.length > 0 ? animals.map((animal) => (
+                                    <tr key={animal.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{animal.tagId}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{animal.species}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{batches.find(b => b.id === animal.batchId)?.batchCode || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                animal.status === 'HEALTHY' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                                                animal.status === 'SICK' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                            }`}>
+                                                {animal.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString('vi-VN')}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                                            <button onClick={() => handleOpenEventsModal(animal)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200" title="Sự kiện">
+                                                <ActivityIcon className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={() => handleOpenModal(animal)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200" title="Sửa">
+                                                <EditIcon className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={() => setAnimalToDelete(animal)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200" title="Xóa">
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                                            {isFiltered ? 'Không tìm thấy vật nuôi nào khớp với bộ lọc.' : 'Không tìm thấy vật nuôi nào cho trang trại này.'}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            
             {isModalOpen && editingAnimal && (
                 <Modal 
                     title={ 'id' in editingAnimal ? 'Sửa thông tin vật nuôi' : 'Thêm vật nuôi mới'} 

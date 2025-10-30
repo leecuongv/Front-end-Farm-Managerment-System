@@ -1,10 +1,10 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, Role, Farm } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -20,6 +20,24 @@ const initialUserState: Omit<User, 'id' | 'avatarUrl'> = {
     isActive: true,
 };
 
+const initialFilters = {
+    search: '',
+    role: '',
+    isActive: '',
+    sortBy: 'fullName',
+    sortDirection: 'asc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
 const UserManagementView: React.FC = () => {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
@@ -27,25 +45,49 @@ const UserManagementView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | (Omit<User, 'id' | 'avatarUrl'> & { password?: string }) | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
+    const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
     
     const { farms } = useFarm();
     const { addNotification } = useNotification();
 
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(filters.search);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [filters.search]);
+
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await apiClient<User[]>('/users');
+            const queryParams = buildQueryString({
+                search: debouncedSearch,
+                role: filters.role,
+                isActive: filters.isActive,
+                sortBy: filters.sortBy,
+                sortDirection: filters.sortDirection,
+            });
+            const data = await apiClient<User[]>(`/users?${queryParams}`);
             setUsers(data.map(u => ({...u, avatarUrl: `https://picsum.photos/seed/${u.id}/100`})));
         } catch (err: any) {
             addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [addNotification]);
+    }, [addNotification, debouncedSearch, filters.role, filters.isActive, filters.sortBy, filters.sortDirection]);
 
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const resetFilters = () => {
+        setFilters(initialFilters);
+    };
 
     const handleOpenModal = (user: User | null = null) => {
         setEditingUser(user || initialUserState);
@@ -102,14 +144,8 @@ const UserManagementView: React.FC = () => {
         }
     };
 
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
 
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
@@ -123,66 +159,115 @@ const UserManagementView: React.FC = () => {
                 </button>
             </div>
             
-            <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tên người dùng</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vai trò</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trang trại</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
-                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                            {users.length > 0 ? users.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        <div className="flex items-center">
-                                            <img className="h-10 w-10 rounded-full" src={user.avatarUrl} alt="" />
-                                            <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{user.fullName}</div>
-                                                <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.role}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {user.farmIds.map(id => farms.find(f => f.id === id)?.name).join(', ') || 'N/A'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <ToggleSwitch 
-                                            checked={user.isActive} 
-                                            onChange={() => handleToggleActivation(user)}
-                                            disabled={user.id === currentUser?.id}
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                                        <button onClick={() => handleOpenModal(user)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
-                                            <EditIcon className="w-5 h-5" />
-                                        </button>
-                                        <button 
-                                            onClick={() => setUserToDelete(user)} 
-                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={user.id === currentUser?.id}
-                                        >
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={5} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                                        Không tìm thấy người dùng nào.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex-grow min-w-[200px]">
+                    <input 
+                        type="text" 
+                        placeholder="Tìm kiếm tên, email..." 
+                        className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"
+                        value={filters.search}
+                        onChange={e => handleFilterChange('search', e.target.value)}
+                    />
                 </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Vai trò:</label>
+                    <select value={filters.role} onChange={e => handleFilterChange('role', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Trạng thái:</label>
+                    <select value={filters.isActive} onChange={e => handleFilterChange('isActive', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        <option value="true">Hoạt động</option>
+                        <option value="false">Không hoạt động</option>
+                    </select>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Sắp xếp:</label>
+                    <select value={filters.sortBy} onChange={e => handleFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="fullName">Tên</option>
+                        <option value="email">Email</option>
+                        <option value="role">Vai trò</option>
+                    </select>
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                </button>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
             </div>
 
+            {isLoading ? (
+                <div className="flex justify-center items-center h-full">
+                    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-primary-600"></div>
+                </div>
+            ) : (
+                <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tên người dùng</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vai trò</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trang trại</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trạng thái</th>
+                                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                {users.length > 0 ? users.map((user) => (
+                                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                            <div className="flex items-center">
+                                                <img className="h-10 w-10 rounded-full" src={user.avatarUrl} alt="" />
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{user.fullName}</div>
+                                                    <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.role}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {user.farmIds.map(id => farms.find(f => f.id === id)?.name).join(', ') || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <ToggleSwitch 
+                                                checked={user.isActive} 
+                                                onChange={() => handleToggleActivation(user)}
+                                                disabled={user.id === currentUser?.id}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                                            <button onClick={() => handleOpenModal(user)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
+                                                <EditIcon className="w-5 h-5" />
+                                            </button>
+                                            <button 
+                                                onClick={() => setUserToDelete(user)} 
+                                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                disabled={user.id === currentUser?.id}
+                                            >
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                                            {isFiltered ? 'Không tìm thấy người dùng nào khớp với bộ lọc.' : 'Không tìm thấy người dùng nào.'}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            
             {isModalOpen && editingUser && (
                 <Modal 
                     title={ 'id' in editingUser ? 'Sửa thông tin người dùng' : 'Thêm người dùng mới'} 

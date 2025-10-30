@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Enclosure } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -17,12 +16,29 @@ const initialEnclosureState: Omit<Enclosure, 'id' | 'currentOccupancy'> = {
     capacity: 0,
 };
 
+const initialFilters = {
+    type: '',
+    sortBy: 'name',
+    sortDirection: 'asc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
 const EnclosuresView: React.FC = () => {
     const [enclosures, setEnclosures] = useState<Enclosure[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEnclosure, setEditingEnclosure] = useState<Enclosure | Omit<Enclosure, 'id' | 'currentOccupancy'> | null>(null);
     const [enclosureToDelete, setEnclosureToDelete] = useState<Enclosure | null>(null);
+    const [filters, setFilters] = useState(initialFilters);
 
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
@@ -35,18 +51,30 @@ const EnclosuresView: React.FC = () => {
         }
         setIsLoading(true);
         try {
-            const data = await apiClient<Enclosure[]>(`/enclosures?farmId=${selectedFarm.id}`);
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                ...filters,
+            });
+            const data = await apiClient<Enclosure[]>(`/enclosures?${queryParams}`);
             setEnclosures(data);
         } catch (err: any) {
             addNotification(err.message, 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, filters]);
 
     useEffect(() => {
         fetchEnclosures();
     }, [fetchEnclosures]);
+
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+    
+    const resetFilters = () => {
+        setFilters(initialFilters);
+    };
 
     const handleOpenModal = (enclosure: Enclosure | null = null) => {
         setEditingEnclosure(enclosure || { ...initialEnclosureState, farmId: selectedFarm?.id || ''});
@@ -88,6 +116,9 @@ const EnclosuresView: React.FC = () => {
             setEnclosureToDelete(null);
         }
     };
+    
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
+
 
     if (isLoading) {
         return (
@@ -115,6 +146,31 @@ const EnclosuresView: React.FC = () => {
                 >
                     Thêm chuồng trại
                 </button>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Loại:</label>
+                    <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {ENCLOSURE_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Sắp xếp:</label>
+                    <select value={filters.sortBy} onChange={e => handleFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="name">Tên</option>
+                        <option value="capacity">Sức chứa</option>
+                    </select>
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                </button>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
             </div>
             
             <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">

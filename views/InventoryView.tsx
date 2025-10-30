@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { InventoryItem, InventoryLog, Enclosure, Animal, Batch, InventoryAudit, AuditItem } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -26,6 +25,28 @@ const initialLogState: Omit<InventoryLog, 'id' | 'recordedBy'> = {
     date: new Date().toISOString().split('T')[0],
 };
 
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
+const initialItemFilters = {
+    category: '',
+    sortBy: 'name',
+    sortDirection: 'asc',
+};
+const initialLogFilters = {
+    type: '',
+    sortBy: 'date',
+    sortDirection: 'desc',
+};
+
+
 const InventoryView: React.FC = () => {
     const { selectedFarm } = useFarm();
     const { addNotification } = useNotification();
@@ -40,6 +61,17 @@ const InventoryView: React.FC = () => {
     const [editingItem, setEditingItem] = useState<InventoryItem | Omit<InventoryItem, 'id'> | null>(null);
     const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
+    const [itemFilters, setItemFilters] = useState(initialItemFilters);
+    const [logFilters, setLogFilters] = useState(initialLogFilters);
+    const [debouncedCategory, setDebouncedCategory] = useState('');
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedCategory(itemFilters.category);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [itemFilters.category]);
+
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
             setItems([]); setLogs([]); setBatches([]); setAudits([]);
@@ -48,9 +80,22 @@ const InventoryView: React.FC = () => {
         }
         setIsLoading(true);
         try {
+            const itemParams = buildQueryString({
+                farmId: selectedFarm.id,
+                category: debouncedCategory,
+                sortBy: itemFilters.sortBy,
+                sortDirection: itemFilters.sortDirection,
+            });
+            const logParams = buildQueryString({
+                farmId: selectedFarm.id,
+                type: logFilters.type,
+                sortBy: logFilters.sortBy,
+                sortDirection: logFilters.sortDirection,
+            });
+
             const [itemsData, logsData, batchesData, auditsData] = await Promise.all([
-                apiClient<InventoryItem[]>(`/inventory-items?farmId=${selectedFarm.id}`),
-                apiClient<InventoryLog[]>(`/inventory-logs?farmId=${selectedFarm.id}`),
+                apiClient<InventoryItem[]>(`/inventory-items?${itemParams}`),
+                apiClient<InventoryLog[]>(`/inventory-logs?${logParams}`),
                 apiClient<Batch[]>(`/batches?farmId=${selectedFarm.id}`),
                 apiClient<InventoryAudit[]>(`/inventory-audits?farmId=${selectedFarm.id}`)
             ]);
@@ -63,9 +108,21 @@ const InventoryView: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, itemFilters, logFilters, debouncedCategory]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    const handleItemFilterChange = (key: keyof typeof itemFilters, value: string) => {
+        setItemFilters(prev => ({ ...prev, [key]: value }));
+    };
+    const resetItemFilters = () => setItemFilters(initialItemFilters);
+    const isItemFiltered = useMemo(() => JSON.stringify(itemFilters) !== JSON.stringify(initialItemFilters), [itemFilters]);
+
+    const handleLogFilterChange = (key: keyof typeof logFilters, value: string) => {
+        setLogFilters(prev => ({ ...prev, [key]: value }));
+    };
+    const resetLogFilters = () => setLogFilters(initialLogFilters);
+    const isLogFiltered = useMemo(() => JSON.stringify(logFilters) !== JSON.stringify(initialLogFilters), [logFilters]);
 
     const handleOpenItemModal = (item: InventoryItem | null = null) => {
         setEditingItem(item || { ...initialItemState, farmId: selectedFarm?.id || '' });
@@ -141,6 +198,23 @@ const InventoryView: React.FC = () => {
                         <button onClick={() => handleOpenItemModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Thêm vật phẩm</button>
                     </div>
                 </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center mb-6">
+                    <div className="flex-grow min-w-[200px]">
+                        <input type="text" placeholder="Lọc theo loại..." value={itemFilters.category} onChange={e => handleItemFilterChange('category', e.target.value)} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"/>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Sắp xếp:</label>
+                        <select value={itemFilters.sortBy} onChange={e => handleItemFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                            <option value="name">Tên</option>
+                            <option value="quantity">Số lượng</option>
+                            <option value="category">Loại</option>
+                        </select>
+                    </div>
+                    <button onClick={() => handleItemFilterChange('sortDirection', itemFilters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        {itemFilters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                    </button>
+                    {isItemFiltered && <button onClick={resetItemFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><XIcon className="w-4 h-4"/> Xóa bộ lọc</button>}
+                </div>
                 <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -204,6 +278,20 @@ const InventoryView: React.FC = () => {
 
             <div>
                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">Lịch sử Kho</h2>
+                 <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center mb-6">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Loại GD:</label>
+                        <select value={logFilters.type} onChange={e => handleLogFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                            <option value="">Tất cả</option>
+                            <option value="IN">Nhập</option>
+                            <option value="OUT">Xuất</option>
+                        </select>
+                    </div>
+                    <button onClick={() => handleLogFilterChange('sortDirection', logFilters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        {logFilters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                    </button>
+                    {isLogFiltered && <button onClick={resetLogFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><XIcon className="w-4 h-4"/> Xóa bộ lọc</button>}
+                 </div>
                  <div className="bg-white dark:bg-gray-900 shadow-md rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

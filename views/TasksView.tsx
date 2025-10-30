@@ -1,10 +1,9 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Task, User, Role } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { EditIcon, TrashIcon } from '../constants';
+import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
@@ -21,6 +20,23 @@ const initialTaskState: Omit<Task, 'id' | 'createdAt' | 'createdBy'> = {
     dueDate: new Date().toISOString().split('T')[0],
 };
 
+const initialFilters = {
+    status: '',
+    sortBy: 'dueDate',
+    sortDirection: 'asc',
+};
+
+const buildQueryString = (params: Record<string, string>) => {
+    const query = new URLSearchParams();
+    for (const key in params) {
+        if (params[key]) {
+            query.set(key, params[key]);
+        }
+    }
+    return query.toString();
+};
+
+
 const TasksView: React.FC = () => {
     const { user } = useAuth();
     const { selectedFarm } = useFarm();
@@ -32,6 +48,7 @@ const TasksView: React.FC = () => {
     const [editingTask, setEditingTask] = useState<Task | Omit<Task, 'id' | 'createdAt' | 'createdBy'> | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+    const [filters, setFilters] = useState(initialFilters);
 
     const fetchData = useCallback(async () => {
         if (!selectedFarm) {
@@ -42,8 +59,12 @@ const TasksView: React.FC = () => {
         }
         setIsLoading(true);
         try {
+            const queryParams = buildQueryString({
+                farmId: selectedFarm.id,
+                ...filters,
+            });
             const [tasksData, usersData] = await Promise.all([
-                apiClient<Task[]>(`/tasks?farmId=${selectedFarm.id}`),
+                apiClient<Task[]>(`/tasks?${queryParams}`),
                 apiClient<User[]>('/users')
             ]);
             setTasks(tasksData);
@@ -53,11 +74,21 @@ const TasksView: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedFarm, addNotification]);
+    }, [selectedFarm, addNotification, filters]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+    
+    const handleFilterChange = (key: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const resetFilters = () => {
+        setFilters(initialFilters);
+    };
+    
+    const isFiltered = useMemo(() => JSON.stringify(filters) !== JSON.stringify(initialFilters), [filters]);
 
     const handleOpenModal = (task: Task | null = null) => {
         setEditingTask(task || { ...initialTaskState, farmId: selectedFarm?.id || '' });
@@ -110,6 +141,32 @@ const TasksView: React.FC = () => {
                         <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Tạo công việc</button>
                     )}
                 </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex flex-wrap gap-4 items-center">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Trạng thái:</label>
+                    <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="">Tất cả</option>
+                        {TASK_STATUSES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Sắp xếp:</label>
+                    <select value={filters.sortBy} onChange={e => handleFilterChange('sortBy', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                        <option value="dueDate">Ngày hết hạn</option>
+                        <option value="title">Tiêu đề</option>
+                        <option value="status">Trạng thái</option>
+                    </select>
+                </div>
+                <button onClick={() => handleFilterChange('sortDirection', filters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
+                    {filters.sortDirection === 'asc' ? <ArrowUpIcon className="w-5 h-5"/> : <ArrowDownIcon className="w-5 h-5"/>}
+                </button>
+                {isFiltered && (
+                    <button onClick={resetFilters} className="p-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <XIcon className="w-4 h-4" /> Xóa bộ lọc
+                    </button>
+                )}
             </div>
 
             {viewMode === 'list' ? (
