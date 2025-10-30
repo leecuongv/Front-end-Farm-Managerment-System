@@ -1,21 +1,13 @@
 
 import React from 'react';
-import { ViewType } from '../constants';
 import NavLinks from './NavLinks';
 
 interface MobileSidebarProps {
     isOpen: boolean;
     onClose: () => void;
-    currentView: ViewType;
-    setCurrentView: (view: ViewType) => void;
 }
 
-const MobileSidebar: React.FC<MobileSidebarProps> = ({ isOpen, onClose, currentView, setCurrentView }) => {
-    const handleLinkClick = (view: ViewType) => {
-        setCurrentView(view);
-        onClose();
-    };
-
+const MobileSidebar: React.FC<MobileSidebarProps> = ({ isOpen, onClose }) => {
     return (
         <>
             {/* Overlay */}
@@ -40,8 +32,7 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({ isOpen, onClose, currentV
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         <NavLinks
-                            currentView={currentView}
-                            onLinkClick={handleLinkClick}
+                            onLinkClick={onClose}
                             className="flex flex-col p-2 space-y-1"
                         />
                     </div>

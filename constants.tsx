@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Role } from './types';
 
@@ -24,11 +25,11 @@ export const LivestockIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path d="M16 16.427A5.002 5.002 0 0 0 12.002 12m-4 4.427A5.002 5.002 0 0 1 11.998 12"/>
       <path d="M12 2c-3.5 0-6.2 3.8-6.2 6.5 0 2.2 1.3 3.8 2.2 4.8a.7.7 0 0 0 1.1 0c.9-1 2.2-2.6 2.2-4.8C11.3 5.8 9 2 5.5 2"/>
       <path d="M12 2c3.5 0 6.2 3.8 6.2 6.5 0 2.2-1.3 3.8-2.2 4.8a.7.7 0 0 1-1.1 0c-.9-1-2.2-2.6-2.2-4.8C12.7 5.8 15 2 18.5 2"/>
-      <path d="M6 18c-1.5 0-2.8.9-3.2 2"/>
-      <path d="M18 18c1.5 0 2.8.9 3.2 2"/>
+      <path d="M6 18c-1.5 0-2.8 .9-3.2 2"/>
+      <path d="M18 18c1.5 0 2.8 .9 3.2 2"/>
       <path d="M12 12v2.5"/>
-      <path d="M11.2 18.2c-.4.8-.4 1.8 0 2.6"/>
-      <path d="M12.8 18.2c.4.8.4 1.8 0 2.6"/>
+      <path d="M11.2 18.2c-.4 .8-.4 1.8 0 2.6"/>
+      <path d="M12.8 18.2c.4 .8 .4 1.8 0 2.6"/>
     </svg>
 );
 
@@ -184,5 +185,3 @@ export const NAV_LINKS = [
     { name: 'Quản lý người dùng', href: 'users', icon: UsersIcon, roles: [Role.ADMIN] },
     { name: 'Quản lý trang trại', href: 'farms', icon: FarmIcon, roles: [Role.ADMIN] },
 ];
-
-export type ViewType = 'dashboard' | 'livestock' | 'plots' | 'seasons' | 'crops' | 'enclosures' | 'feed_plans' | 'inventory' | 'batches' | 'tasks' | 'my_tasks' | 'finance' | 'reports' | 'users' | 'farms';

@@ -3,19 +3,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { SunIcon, MoonIcon, LogoutIcon, FarmIcon } from '../constants';
-import { ViewType } from '../constants';
 import { useFarm } from '../contexts/FarmContext';
 import NavLinks from './NavLinks';
 
 
 interface HeaderProps {
-    currentView: ViewType;
-    setCurrentView: (view: ViewType) => void;
     mobileMenuOpen: boolean;
     setMobileMenuOpen: (open: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenuOpen, setMobileMenuOpen }) => {
+const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, setMobileMenuOpen }) => {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { userFarms, selectedFarm, selectFarm, isLoading: isFarmsLoading } = useFarm();
@@ -39,10 +36,6 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     
-    const handleNavLinkClick = (view: ViewType) => {
-        setCurrentView(view);
-    };
-
     return (
         <header className="relative bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 z-20">
             <div className="flex items-center justify-between h-20 px-4 sm:px-6">
@@ -58,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, mobileMenu
                     <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">FarmSys</h1>
                      {/* Desktop Navigation */}
                     <div className="hidden lg:flex items-center ml-10 overflow-x-auto">
-                        <NavLinks currentView={currentView} onLinkClick={handleNavLinkClick} className="flex items-center space-x-1"/>
+                        <NavLinks className="flex items-center space-x-1"/>
                     </div>
                 </div>
 
