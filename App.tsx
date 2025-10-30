@@ -22,6 +22,7 @@ import BatchesView from './views/BatchesView';
 import PlotsView from './views/PlotsView';
 import SeasonsView from './views/SeasonsView';
 import ReportsView from './views/ReportsView';
+import OAuth2RedirectHandler from './views/OAuth2RedirectHandler';
 
 const AppContent = () => {
     const { user, isLoading } = useAuth();
@@ -37,6 +38,7 @@ const AppContent = () => {
     return (
         <Routes>
             <Route path="/login" element={!user ? <LoginView /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
             
             <Route path="/" element={user ? <FarmProvider><MainLayout /></FarmProvider> : <Navigate to="/login" replace />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />

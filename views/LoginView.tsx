@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSearchParams } from 'react-router-dom';
+import { API_BASE_URL } from '../apiConfig';
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 48 48">
@@ -19,6 +21,14 @@ const LoginView: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const errorParam = searchParams.get('error');
+        if (errorParam) {
+            setError(decodeURIComponent(errorParam));
+        }
+    }, [searchParams]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,19 +43,10 @@ const LoginView: React.FC = () => {
         }
     };
     
-    const handleGoogleLogin = async () => {
+    const handleGoogleLogin = () => {
         setError('');
-        setIsLoading(true);
-        try {
-            // In a real app, this would trigger the Google OAuth flow.
-            // We'll simulate a successful login with a manager account.
-            // FIX: The login function requires a password. We provide one for the simulation.
-            await login('manager.dalat@farm.com', 'manager');
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
+        setIsLoading(true); // Show loading state before redirect
+        window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
     }
 
     return (

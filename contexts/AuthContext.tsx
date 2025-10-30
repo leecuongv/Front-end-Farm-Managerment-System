@@ -3,11 +3,13 @@ import React, { createContext, useState, useContext, ReactNode, useCallback, use
 import { User } from '../types';
 import { API_BASE_URL } from '../apiConfig';
 import { getStoredAuthData, setStoredAuthData, clearStoredAuthData } from '../utils/authStorage';
+import apiClient from '../apiClient';
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
     login: (email: string, password?: string) => Promise<void>;
+    loginWithToken: (token: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
 }
@@ -66,6 +68,40 @@ export const AuthProvider = ({ children }: PropsWithChildren<{}>) => {
         setStoredAuthData(authToken, userData);
     }, []);
 
+    const loginWithToken = useCallback(async (authToken: string) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/me`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to fetch user data with token.' }));
+                throw new Error(errorData.message || 'Failed to fetch user data with token.');
+            }
+
+            const userDataFromApi = await response.json();
+            const userData: User = {
+                ...userDataFromApi,
+                avatarUrl: `https://picsum.photos/seed/${userDataFromApi.id}/100`
+            };
+            
+            setToken(authToken);
+            setUser(userData);
+            setStoredAuthData(authToken, userData);
+
+        } catch (error) {
+            clearStoredAuthData();
+            setToken(null);
+            setUser(null);
+            console.error("Failed to fetch user with token", error);
+            throw error;
+        }
+    }, []);
+
+
     const logout = useCallback(() => {
         setUser(null);
         setToken(null);
@@ -73,7 +109,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<{}>) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, loginWithToken, logout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
