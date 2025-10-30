@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NavLink, NavGroup } from '../types';
@@ -45,7 +46,7 @@ const NavDropdown: React.FC<NavDropdownProps> = ({ item, childLinks, onLinkClick
                 <ChevronDownIcon className={`w-4 h-4 ml-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-20">
+                <div className="absolute top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-30">
                     {childLinks.map(child => (
                         <Link
                             key={child.name}

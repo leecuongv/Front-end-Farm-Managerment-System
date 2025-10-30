@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, setMobileMenuOpen }) =>
                     </button>
                     <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">FarmSys</h1>
                      {/* Desktop Navigation */}
-                    <div className="hidden lg:flex items-center ml-10 overflow-x-auto">
+                    <div className="hidden lg:flex items-center ml-10">
                         <NavLinks className="flex items-center space-x-1"/>
                     </div>
                 </div>
