@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, Role, Farm } from '../types';
 import { useFarm } from '../contexts/FarmContext';
@@ -10,6 +11,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { useAuth } from '../contexts/AuthContext';
+import { roleMap, translate } from '../utils/translations';
 
 const initialUserState: Omit<User, 'id' | 'avatarUrl'> = {
     username: '',
@@ -173,7 +175,7 @@ const UserManagementView: React.FC = () => {
                     <label className="text-sm font-medium">Vai trò:</label>
                     <select value={filters.role} onChange={e => handleFilterChange('role', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                         <option value="">Tất cả</option>
-                        {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
+                        {Object.entries(roleMap).map(([key, value]) => <option key={key} value={key as Role}>{value}</option>)}
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -231,7 +233,7 @@ const UserManagementView: React.FC = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.role}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{translate(roleMap, user.role)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {user.farmIds.map(id => farms.find(f => f.id === id)?.name).join(', ') || 'N/A'}
                                         </td>
@@ -347,7 +349,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, allFarms, onSave, onCancel })
                  <div>
                     <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vai trò</label>
                     <select name="role" id="role" value={formData.role} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
-                        {Object.values(Role).map(role => <option key={role} value={role}>{role}</option>)}
+                        {Object.entries(roleMap).map(([key, value]) => <option key={key} value={key as Role}>{value}</option>)}
                     </select>
                 </div>
                 <div className="md:col-span-2">

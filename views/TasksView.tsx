@@ -8,8 +8,7 @@ import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
 import Calendar from '../components/Calendar';
-
-const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'];
+import { taskStatusMap, translate } from '../utils/translations';
 
 const initialTaskState: Omit<Task, 'id' | 'createdAt' | 'createdBy'> = {
     farmId: '',
@@ -148,7 +147,7 @@ const TasksView: React.FC = () => {
                     <label className="text-sm font-medium">Trạng thái:</label>
                     <select value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                         <option value="">Tất cả</option>
-                        {TASK_STATUSES.map(r => <option key={r} value={r}>{r}</option>)}
+                        {Object.entries(taskStatusMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -188,7 +187,7 @@ const TasksView: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{task.title}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{users.find(u => u.id === task.assignedTo)?.fullName || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(task.dueDate).toLocaleDateString('vi-VN')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${task.status === 'DONE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{task.status}</span></td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${task.status === 'DONE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{translate(taskStatusMap, task.status)}</span></td>
                                         {canManage && (
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                                 <button onClick={() => handleOpenModal(task)} className="text-primary-600 hover:text-primary-900"><EditIcon className="w-5 h-5" /></button>
@@ -253,7 +252,7 @@ const TaskForm: React.FC<{ task: any, users: User[], onSave: (data: any) => void
              <div>
                 <label>Trạng thái</label>
                 <select name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 p-2">
-                    {TASK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {Object.entries(taskStatusMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                 </select>
             </div>
             <div className="flex justify-end space-x-3 pt-4">

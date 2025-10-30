@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { FeedPlan, FeedPlanStage, FeedDetail } from '../types';
 import { useFarm } from '../contexts/FarmContext';
@@ -7,8 +8,7 @@ import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
-
-const FEED_PLAN_STAGES = Object.values(FeedPlanStage);
+import { feedPlanStageMap, translate } from '../utils/translations';
 
 const initialFeedPlanState: Omit<FeedPlan, 'id'> = {
     farmId: '',
@@ -134,7 +134,7 @@ const FeedPlansView: React.FC = () => {
                             {feedPlans.length > 0 ? feedPlans.map((plan) => (
                                 <tr key={plan.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{plan.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">{plan.stage}</span></td>
+                                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">{translate(feedPlanStageMap, plan.stage)}</span></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 max-w-md truncate">{plan.description}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                         <button onClick={() => handleOpenModal(plan)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
@@ -234,7 +234,7 @@ const FeedPlanForm: React.FC<FeedPlanFormProps> = ({ plan, onSave, onCancel }) =
                 <div>
                     <label htmlFor="stage" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Giai đoạn</label>
                     <select name="stage" id="stage" value={formData.stage} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
-                        {FEED_PLAN_STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
+                        {Object.entries(feedPlanStageMap).map(([key, value]) => <option key={key} value={key as FeedPlanStage}>{value}</option>)}
                     </select>
                 </div>
             </div>

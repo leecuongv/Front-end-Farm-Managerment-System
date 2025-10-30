@@ -6,6 +6,7 @@ import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../const
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
+import { inventoryLogTypeMap, translate } from '../utils/translations';
 
 const initialItemState: Omit<InventoryItem, 'id'> = {
     farmId: '',
@@ -283,8 +284,7 @@ const InventoryView: React.FC = () => {
                         <label className="text-sm font-medium">Loại GD:</label>
                         <select value={logFilters.type} onChange={e => handleLogFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                             <option value="">Tất cả</option>
-                            <option value="IN">Nhập</option>
-                            <option value="OUT">Xuất</option>
+                            {Object.entries(inventoryLogTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                         </select>
                     </div>
                     <button onClick={() => handleLogFilterChange('sortDirection', logFilters.sortDirection === 'asc' ? 'desc' : 'asc')} className="p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
@@ -311,7 +311,7 @@ const InventoryView: React.FC = () => {
                                         <td className="px-6 py-4">{new Date(log.date).toLocaleDateString('vi-VN')}</td>
                                         <td className="px-6 py-4 font-medium">{items.find(i => i.id === log.itemId)?.name || log.itemId}</td>
                                         <td className="px-6 py-4">{log.batchCode || 'N/A'}</td>
-                                        <td className="px-6 py-4"><span className={`px-2 inline-flex font-semibold rounded-full text-xs ${log.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{log.type}</span></td>
+                                        <td className="px-6 py-4"><span className={`px-2 inline-flex font-semibold rounded-full text-xs ${log.type === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{translate(inventoryLogTypeMap, log.type)}</span></td>
                                         <td className="px-6 py-4">{log.quantity}</td>
                                         <td className="px-6 py-4">{log.notes}</td>
                                     </tr>
@@ -360,7 +360,9 @@ const LogForm: React.FC<{ items: InventoryItem[], batches: Batch[], farmId: stri
     return <form onSubmit={handleSubmit} className="space-y-4">
         <select name="itemId" value={formData.itemId} onChange={handleChange} required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Chọn vật phẩm</option>{items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select>
         <div className="flex gap-4">
-            <select name="type" value={formData.type} onChange={handleChange} required className="w-1/3 p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="OUT">Xuất</option><option value="IN">Nhập</option></select>
+            <select name="type" value={formData.type} onChange={handleChange} required className="w-1/3 p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
+                {Object.entries(inventoryLogTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+            </select>
             <input type="number" step="any" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="Số lượng" required className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"/>
         </div>
         <select name="batchCode" value={formData.batchCode || ''} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"><option value="">Lô (Tùy chọn)</option>{batches.filter(b => b.type === 'INVENTORY').map(b => <option key={b.id} value={b.batchCode}>{b.batchCode}</option>)}</select>

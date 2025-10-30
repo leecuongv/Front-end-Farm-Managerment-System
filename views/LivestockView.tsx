@@ -6,10 +6,7 @@ import { EditIcon, TrashIcon, ActivityIcon, ArrowUpIcon, ArrowDownIcon, XIcon } 
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
-
-const ANIMAL_TYPES = ['BREEDING_FEMALE', 'DEVELOPMENT', 'FATTENING', 'YOUNG'];
-const STATUS_TYPES = ['HEALTHY', 'SICK', 'SOLD', 'DEAD'];
-const EVENT_TYPES = ['VACCINATION', 'TREATMENT', 'HEALTH_CHECK', 'WEIGHING', 'BIRTH'];
+import { animalStatusMap, animalTypeMap, animalEventMap, translate } from '../utils/translations';
 
 const initialFilters = {
     species: '',
@@ -193,7 +190,7 @@ const LivestockView: React.FC = () => {
                     <label htmlFor="status" className="text-sm font-medium">Trạng thái:</label>
                     <select id="status" value={filters.status} onChange={e => handleFilterChange('status', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                         <option value="">Tất cả</option>
-                        {STATUS_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                        {Object.entries(animalStatusMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -245,7 +242,7 @@ const LivestockView: React.FC = () => {
                                                 animal.status === 'SICK' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                                                 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                             }`}>
-                                                {animal.status}
+                                                {translate(animalStatusMap, animal.status)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(animal.birthDate).toLocaleDateString('vi-VN')}</td>
@@ -360,13 +357,13 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, batches, onSave, onCanc
                 <div>
                     <label htmlFor="animalType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại vật nuôi</label>
                     <select name="animalType" id="animalType" value={formData.animalType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
-                        {ANIMAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        {Object.entries(animalTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div>
                     <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Trạng thái</label>
                     <select name="status" id="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
-                        {STATUS_TYPES.map(status => <option key={status} value={status}>{status}</option>)}
+                        {Object.entries(animalStatusMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
             </div>
@@ -381,7 +378,7 @@ const AnimalForm: React.FC<AnimalFormProps> = ({ animal, batches, onSave, onCanc
 const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
     const [events, setEvents] = useState<AnimalEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [newEvent, setNewEvent] = useState({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
+    const [newEvent, setNewEvent] = useState({ type: Object.keys(animalEventMap)[0], date: new Date().toISOString().split('T')[0], notes: '' });
     const { addNotification } = useNotification();
 
     const fetchEvents = useCallback(async () => {
@@ -412,7 +409,7 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
                 body: JSON.stringify({ ...newEvent, animalId: animal.id }),
             });
             addNotification('Sự kiện đã được thêm thành công.', 'success');
-            setNewEvent({ type: EVENT_TYPES[0], date: new Date().toISOString().split('T')[0], notes: '' });
+            setNewEvent({ type: Object.keys(animalEventMap)[0], date: new Date().toISOString().split('T')[0], notes: '' });
             fetchEvents(); // Refresh list
         } catch (err: any) {
             addNotification(err.message, 'error');
@@ -427,7 +424,7 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
                 {events.map(event => (
                     <div key={event.id} className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="font-semibold text-primary-600 dark:text-primary-400">{event.type}</span>
+                            <span className="font-semibold text-primary-600 dark:text-primary-400">{translate(animalEventMap, event.type)}</span>
                             <span>{new Date(event.date).toLocaleDateString('vi-VN')}</span>
                         </div>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{event.notes}</p>
@@ -439,7 +436,7 @@ const AnimalEvents: React.FC<{ animal: Animal }> = ({ animal }) => {
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <select name="type" value={newEvent.type} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
-                            {EVENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                            {Object.entries(animalEventMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                         </select>
                         <input type="date" name="date" value={newEvent.date} onChange={handleChange} className="w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
                     </div>

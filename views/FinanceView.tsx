@@ -6,6 +6,7 @@ import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../const
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
+import { transactionTypeMap, translate } from '../utils/translations';
 
 const initialTransactionState: Omit<FinancialTransaction, 'id' | 'recordedBy'> = {
     farmId: '',
@@ -166,8 +167,7 @@ const FinanceView: React.FC = () => {
                     <label className="text-sm font-medium">Loại:</label>
                     <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                         <option value="">Tất cả</option>
-                        <option value="REVENUE">Doanh thu</option>
-                        <option value="EXPENSE">Chi phí</option>
+                        {Object.entries(transactionTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -209,7 +209,7 @@ const FinanceView: React.FC = () => {
                                 <tr key={t.id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{new Date(t.date).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span className={`px-2 inline-flex font-semibold rounded-full text-xs ${t.type === 'REVENUE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{t.type}</span>
+                                        <span className={`px-2 inline-flex font-semibold rounded-full text-xs ${t.type === 'REVENUE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{translate(transactionTypeMap, t.type)}</span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{t.description}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{batches.find(b => b.id === t.relatedBatchId)?.batchCode || 'N/A'}</td>
@@ -262,8 +262,7 @@ const TransactionForm: React.FC<{ transaction: any, batches: Batch[], onSave: (d
                 <div>
                     <label>Loại giao dịch</label>
                     <select name="type" value={formData.type} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
-                        <option value="EXPENSE">Chi phí</option>
-                        <option value="REVENUE">Doanh thu</option>
+                         {Object.entries(transactionTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div>

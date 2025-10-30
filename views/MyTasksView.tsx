@@ -3,6 +3,7 @@ import { Task } from '../types';
 import { useFarm } from '../contexts/FarmContext';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../apiClient';
+import { taskStatusMap, translate } from '../utils/translations';
 
 const TASK_STATUS_CLASSES = {
     'TODO': 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
@@ -77,16 +78,14 @@ const MyTasksView: React.FC = () => {
                         </div>
                         <div className="flex items-center space-x-4">
                            <span className={`px-3 py-1 text-sm font-semibold rounded-full ${TASK_STATUS_CLASSES[task.status]}`}>
-                                {task.status}
+                                {translate(taskStatusMap, task.status)}
                             </span>
                             <select 
                                 value={task.status} 
                                 onChange={(e) => handleStatusChange(task, e.target.value as Task['status'])}
                                 className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700 p-2"
                             >
-                                <option value="TODO">Cần làm</option>
-                                <option value="IN_PROGRESS">Đang làm</option>
-                                <option value="DONE">Hoàn thành</option>
+                                {Object.entries(taskStatusMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                             </select>
                         </div>
                     </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Batch } from '../types';
 import { useFarm } from '../contexts/FarmContext';
@@ -7,8 +8,7 @@ import { EditIcon, TrashIcon } from '../constants';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
-
-const BATCH_TYPES = ['ANIMAL', 'CROP', 'INVENTORY'];
+import { batchTypeMap, translate } from '../utils/translations';
 
 const initialBatchState: Omit<Batch, 'id'> = {
     farmId: '',
@@ -121,7 +121,7 @@ const BatchesView: React.FC = () => {
                             {batches.map((batch) => (
                                 <tr key={batch.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{batch.batchCode}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{batch.type}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{translate(batchTypeMap, batch.type)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{batch.description}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{new Date(batch.entryDate).toLocaleDateString('vi-VN')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-4">
@@ -182,7 +182,7 @@ const BatchForm: React.FC<BatchFormProps> = ({ batch, onSave, onCancel }) => {
                 <div>
                     <label htmlFor="type">Loại Lô</label>
                     <select name="type" id="type" value={formData.type} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700">
-                        {BATCH_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        {Object.entries(batchTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                  <div>

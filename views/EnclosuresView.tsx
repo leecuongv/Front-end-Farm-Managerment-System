@@ -6,8 +6,7 @@ import { EditIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from '../const
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import apiClient from '../apiClient';
-
-const ENCLOSURE_TYPES = ['BREEDING_PEN', 'DEVELOPMENT_PEN', 'FATTENING_PEN', 'YOUNG_PEN'];
+import { enclosureTypeMap, translate } from '../utils/translations';
 
 const initialEnclosureState: Omit<Enclosure, 'id' | 'currentOccupancy'> = {
     farmId: '',
@@ -153,7 +152,7 @@ const EnclosuresView: React.FC = () => {
                     <label className="text-sm font-medium">Loại:</label>
                     <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className="p-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm">
                         <option value="">Tất cả</option>
-                        {ENCLOSURE_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                        {Object.entries(enclosureTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -188,7 +187,7 @@ const EnclosuresView: React.FC = () => {
                             {enclosures.length > 0 ? enclosures.map((enclosure) => (
                                 <tr key={enclosure.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{enclosure.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{enclosure.type}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{translate(enclosureTypeMap, enclosure.type)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{enclosure.currentOccupancy} / {enclosure.capacity}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
                                         <button onClick={() => handleOpenModal(enclosure)} className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-200">
@@ -272,7 +271,7 @@ const EnclosureForm: React.FC<EnclosureFormProps> = ({ enclosure, onSave, onCanc
                 <div className="md:col-span-2">
                     <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Loại chuồng</label>
                     <select name="type" id="type" value={formData.type} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm bg-white dark:bg-gray-700">
-                        {ENCLOSURE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        {Object.entries(enclosureTypeMap).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
                     </select>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useFarm } from '../contexts/FarmContext';
 import apiClient from '../apiClient';
 import { Animal, Task, InventoryItem, FinancialTransaction } from '../types';
+import { translate, taskStatusMap, animalTypeMap } from '../utils/translations';
 
 const COLORS = {
     light: ['#1d4ed8', '#60a5fa', '#f59e0b', '#ef4444', '#10b981', '#f97316' ],
@@ -62,14 +63,14 @@ const DashboardView: React.FC = () => {
                 setKpiData({ totalAnimals: animals.length, healthyAnimals: healthy, tasksTodo: todo, lowStockItems: lowStock });
 
                 // Process financial chart data (monthly summary)
-                const monthlyFinances: { [key: string]: { Revenue: number, Expense: number } } = {};
+                const monthlyFinances: { [key: string]: { 'Doanh thu': number, 'Chi phí': number } } = {};
                 finances.forEach(t => {
                     const month = new Date(t.date).toLocaleString('default', { month: 'short', year: 'numeric' });
                     if (!monthlyFinances[month]) {
-                        monthlyFinances[month] = { Revenue: 0, Expense: 0 };
+                        monthlyFinances[month] = { 'Doanh thu': 0, 'Chi phí': 0 };
                     }
-                    if (t.type === 'REVENUE') monthlyFinances[month].Revenue += t.amount;
-                    else monthlyFinances[month].Expense += t.amount;
+                    if (t.type === 'REVENUE') monthlyFinances[month]['Doanh thu'] += t.amount;
+                    else monthlyFinances[month]['Chi phí'] += t.amount;
                 });
                 const financialChart = Object.entries(monthlyFinances).map(([name, values]) => ({ name, ...values })).slice(-6); // Last 6 months
                 setFinancialData(financialChart);
@@ -79,14 +80,14 @@ const DashboardView: React.FC = () => {
                     acc[task.status] = (acc[task.status] || 0) + 1;
                     return acc;
                 }, {} as Record<Task['status'], number>);
-                setTaskStatusData(Object.entries(taskStatus).map(([name, value]) => ({ name, value })));
+                setTaskStatusData(Object.entries(taskStatus).map(([name, value]) => ({ name: translate(taskStatusMap, name), value })));
 
                 // Process animal type data
                 const animalTypes = animals.reduce((acc, animal) => {
                     acc[animal.animalType] = (acc[animal.animalType] || 0) + 1;
                     return acc;
                 }, {} as Record<Animal['animalType'], number>);
-                setAnimalTypeData(Object.entries(animalTypes).map(([name, value]) => ({ name, value })));
+                setAnimalTypeData(Object.entries(animalTypes).map(([name, value]) => ({ name: translate(animalTypeMap, name), value })));
 
                 // Process inventory category data
                 const inventoryCategories = inventory.reduce((acc, item) => {
@@ -147,8 +148,8 @@ const DashboardView: React.FC = () => {
                                     formatter={(value) => new Intl.NumberFormat('vi-VN').format(value as number)}
                                 />
                                 <Legend />
-                                <Bar dataKey="Revenue" fill={chartColors[4]} radius={[4, 4, 0, 0]} name="Doanh thu" />
-                                <Bar dataKey="Expense" fill={chartColors[3]} radius={[4, 4, 0, 0]} name="Chi phí" />
+                                <Bar dataKey="Doanh thu" fill={chartColors[4]} radius={[4, 4, 0, 0]} name="Doanh thu" />
+                                <Bar dataKey="Chi phí" fill={chartColors[3]} radius={[4, 4, 0, 0]} name="Chi phí" />
                             </BarChart>
                         ) : <ChartPlaceholder message="Chưa có dữ liệu tài chính." />}
                     </ResponsiveContainer>
